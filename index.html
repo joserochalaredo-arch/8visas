@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario DS-160 - Visa Americana</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>FORMULARIO DE INFORMACIÓN PARA VISA AMERICANA</h1>
+            <p class="subtitle">Toda la información solicitada es necesaria para la forma DS160</p>
+        </header>
+
+        <form id="visaForm" class="visa-form">
+            
+            <!-- Sección: Información de la Cita -->
+            <section class="form-section">
+                <h2 class="section-title">Información de la Cita</h2>
+                <div class="form-group">
+                    <label for="ciudad-cita" class="required">Ciudad en donde quiere la cita (marcar con X)</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="ciudadCita" value="GDL" required>
+                            <span>GDL (Guadalajara)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="ciudadCita" value="MTY">
+                            <span>MTY (Monterrey)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="ciudadCita" value="MEX">
+                            <span>MEX (Ciudad de México)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="ciudadCita" value="OTRO">
+                            <span>Otro</span>
+                        </label>
+                    </div>
+                    <input type="text" id="otraCiudad" name="otraCiudad" placeholder="Especificar otra ciudad (ej: Laredo)" class="hidden-input">
+                </div>
+            </section>
+
+            <!-- Sección: Datos Personales -->
+            <section class="form-section">
+                <h2 class="section-title">Datos Personales</h2>
+                
+                <div class="form-group">
+                    <label for="nombreCompleto" class="required">Nombre Completo (Como viene en el pasaporte)</label>
+                    <input type="text" id="nombreCompleto" name="nombreCompleto" placeholder="Apellidos y Nombres" required>
+                    <small class="helper-text">Escriba exactamente como aparece en su pasaporte</small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fechaNacimiento" class="required">Fecha de Nacimiento</label>
+                        <input type="date" id="fechaNacimiento" name="fechaNacimiento" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ciudadNacimiento" class="required">Ciudad de Nacimiento</label>
+                        <input type="text" id="ciudadNacimiento" name="ciudadNacimiento" placeholder="Ciudad" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="estadoNacimiento" class="required">Estado de Nacimiento</label>
+                        <input type="text" id="estadoNacimiento" name="estadoNacimiento" placeholder="Estado" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="paisNacimiento" class="required">País de Nacimiento</label>
+                        <input type="text" id="paisNacimiento" name="paisNacimiento" placeholder="País" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="otraNacionalidad" class="required">¿Tiene otra nacionalidad?</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="otraNacionalidad" value="SI" required>
+                            <span>Sí</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="otraNacionalidad" value="NO">
+                            <span>No</span>
+                        </label>
+                    </div>
+                    <input type="text" id="especificarNacionalidad" name="especificarNacionalidad" placeholder="Especificar nacionalidad" class="hidden-input">
+                </div>
+            </section>
+
+            <!-- Sección: Información del Pasaporte -->
+            <section class="form-section alert-section">
+                <div class="alert-box">
+                    <strong>IMPORTANTE:</strong> Su pasaporte debe tener una vigencia mínima de 6 meses posterior a la fecha en que va a viajar.
+                </div>
+                
+                <h2 class="section-title">Información del Pasaporte</h2>
+
+                <div class="form-group">
+                    <label for="numeroPasaporte" class="required">Número de Pasaporte</label>
+                    <input type="text" id="numeroPasaporte" name="numeroPasaporte" placeholder="Número de pasaporte" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fechaExpedicion" class="required">Fecha de Expedición</label>
+                        <input type="date" id="fechaExpedicion" name="fechaExpedicion" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fechaVencimiento" class="required">Fecha de Vencimiento</label>
+                        <input type="date" id="fechaVencimiento" name="fechaVencimiento" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ciudadExpedicion" class="required">Ciudad de Expedición</label>
+                    <input type="text" id="ciudadExpedicion" name="ciudadExpedicion" placeholder="Ciudad donde se expidió el pasaporte" required>
+                </div>
+            </section>
+
+            <!-- Sección: Domicilio -->
+            <section class="form-section">
+                <h2 class="section-title">Domicilio de Casa</h2>
+
+                <div class="form-group">
+                    <label for="domicilio" class="required">Domicilio completo con colonia y código postal</label>
+                    <textarea id="domicilio" name="domicilio" rows="3" placeholder="Calle, número, colonia, código postal, municipio, estado" required></textarea>
+                    <small class="helper-text">Incluya: calle, número, colonia, código postal, municipio y estado</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="telefonoCasa">Teléfono de Casa</label>
+                    <input type="tel" id="telefonoCasa" name="telefonoCasa" placeholder="Incluir código de área (ej: +52 33 1234 5678)">
+                    <small class="helper-text">Opcional - Si no tiene, escriba "NO TENGO"</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="celular" class="required">Número de Celular</label>
+                    <input type="tel" id="celular" name="celular" placeholder="+52 123 456 7890" required>
+                </div>
+            </section>
+
+            <!-- Sección: Información de Contacto -->
+            <section class="form-section">
+                <h2 class="section-title">Información de Contacto</h2>
+
+                <div class="form-group">
+                    <label for="correoElectronico" class="required">Correo Electrónico (obligatorio)</label>
+                    <input type="email" id="correoElectronico" name="correoElectronico" placeholder="ejemplo@correo.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="otrosNumeros" class="required">¿Ha utilizado otros números de teléfono en los últimos 5 años?</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="otrosNumeros" value="SI" required>
+                            <span>Sí</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="otrosNumeros" value="NO">
+                            <span>No</span>
+                        </label>
+                    </div>
+                    <textarea id="listaNumeros" name="listaNumeros" rows="2" placeholder="Poner los números anteriores" class="hidden-input"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="correosAdicionales">Direcciones de correos adicionales en los últimos 5 años</label>
+                    <textarea id="correosAdicionales" name="correosAdicionales" rows="2" placeholder="Listar correos adicionales utilizados"></textarea>
+                </div>
+            </section>
+
+            <!-- Sección: Redes Sociales -->
+            <section class="form-section">
+                <h2 class="section-title">Redes Sociales</h2>
+
+                <div class="form-group">
+                    <label for="redesSociales" class="required">Nombre de redes sociales que maneja y nombre de usuario (sin contraseña)</label>
+                    <textarea id="redesSociales" name="redesSociales" rows="3" placeholder="Ejemplo:&#10;INSTAGRAM: usuario123&#10;FACEBOOK: Nombre Apellido&#10;TWITTER: @usuario" required></textarea>
+                    <small class="helper-text">Incluya todas las plataformas: Facebook, Instagram, Twitter, LinkedIn, TikTok, etc.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="plataformasAdicionales">¿Utiliza plataformas de redes sociales adicionales en los últimos 5 años?</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="plataformasAdicionales" value="SI">
+                            <span>Sí</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="plataformasAdicionales" value="NO">
+                            <span>No</span>
+                        </label>
+                    </div>
+                    <textarea id="listaPlataformas" name="listaPlataformas" rows="2" placeholder="Especificar plataformas y usuarios anteriores" class="hidden-input"></textarea>
+                </div>
+            </section>
+
+            <!-- Botones de Acción -->
+            <div class="form-actions">
+                <button type="button" id="btnLimpiar" class="btn btn-secondary">Limpiar Formulario</button>
+                <button type="button" id="btnGuardar" class="btn btn-info">Guardar Borrador</button>
+                <button type="button" id="btnExportar" class="btn btn-success">Exportar a PDF</button>
+                <button type="submit" class="btn btn-primary">Enviar Formulario</button>
+            </div>
+
+        </form>
+
+        <footer class="footer">
+            <p>© 2025 - Formulario DS-160 para Visa Americana | Todos los derechos reservados</p>
+            <p class="disclaimer">Este es un formulario de recopilación de información. Los datos serán utilizados exclusivamente para completar el formulario DS-160 oficial.</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
