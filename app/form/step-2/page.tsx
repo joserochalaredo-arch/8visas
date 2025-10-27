@@ -3,54 +3,60 @@
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import { useDS160Store } from '@/store/ds160-store'
+import { useStepNavigation } from '@/hooks/useStepNavigation'
 import { FormWrapper } from '@/components/form-wrapper'
 import { Input } from '@/components/ui/input'
 import { TextArea } from '@/components/ui/textarea'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 
 interface Step2FormData {
   numeroPasaporte: string
   fechaExpedicion: string
   fechaVencimiento: string
   ciudadExpedicion: string
-  domicilio: string
-  telefonoCasa?: string
+  domicilioCasa: string
+  telefonoCasa: string
   celular: string
   correoElectronico: string
-  otrosNumeros: 'SI' | 'NO' | ''
-  listaNumeros?: string
-  correosAdicionales?: string
+  haUtilizadoOtrosNumeros: 'SI' | 'NO' | ''
+  listaOtrosNumeros?: string
+  correosAdicionales: string
   redesSociales: string
   plataformasAdicionales: 'SI' | 'NO' | ''
-  listaPlataformas?: string
+  listaPlataformasAdicionales?: string
+  idiomas: string
+  estadoCivil: 'SOLTERO' | 'CASADO' | 'DIVORCIADO' | 'VIUDO' | 'SEPARADO' | ''
 }
 
 export default function Step2() {
   const router = useRouter()
-  const { formData, updateFormData, setCurrentStep } = useDS160Store()
+  const { formData, setCurrentStep } = useDS160Store()
+  const { navigateToNextStep, saveDraft } = useStepNavigation()
   
-  const { register, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm<Step2FormData>({
+  const { register, handleSubmit, watch, formState: { errors, isValid } } = useForm<Step2FormData>({
     defaultValues: {
-      numeroPasaporte: formData.numeroPasaporte,
-      fechaExpedicion: formData.fechaExpedicion,
-      fechaVencimiento: formData.fechaVencimiento,
-      ciudadExpedicion: formData.ciudadExpedicion,
-      domicilio: formData.domicilio,
-      telefonoCasa: formData.telefonoCasa,
-      celular: formData.celular,
-      correoElectronico: formData.correoElectronico,
-      otrosNumeros: formData.otrosNumeros,
-      listaNumeros: formData.listaNumeros,
-      correosAdicionales: formData.correosAdicionales,
-      redesSociales: formData.redesSociales,
-      plataformasAdicionales: formData.plataformasAdicionales,
-      listaPlataformas: formData.listaPlataformas,
+      numeroPasaporte: formData.numeroPasaporte || '',
+      fechaExpedicion: formData.fechaExpedicion || '',
+      fechaVencimiento: formData.fechaVencimiento || '',
+      ciudadExpedicion: formData.ciudadExpedicion || '',
+      domicilioCasa: formData.domicilio || '',
+      telefonoCasa: formData.telefonoCasa || '',
+      celular: formData.celular || '',
+      correoElectronico: formData.correoElectronico || '',
+      haUtilizadoOtrosNumeros: formData.otrosNumeros || '',
+      listaOtrosNumeros: formData.listaNumeros || '',
+      correosAdicionales: formData.correosAdicionales || '',
+      redesSociales: formData.redesSociales || '',
+      plataformasAdicionales: formData.plataformasAdicionales || '',
+      listaPlataformasAdicionales: formData.listaPlataformas || '',
+      idiomas: formData.idiomas || '',
+      estadoCivil: formData.estadoCivil || ''
     },
     mode: 'onChange'
   })
 
-  const watchOtrosNumeros = watch('otrosNumeros')
+  const watchHaUtilizadoOtrosNumeros = watch('haUtilizadoOtrosNumeros')
   const watchPlataformasAdicionales = watch('plataformasAdicionales')
   const watchFechaVencimiento = watch('fechaVencimiento')
 
@@ -72,15 +78,30 @@ export default function Step2() {
     }
   }, [watchFechaVencimiento])
 
-  const onSubmit = (data: Step2FormData) => {
-    updateFormData(data)
-    router.push('/form/step-3')
+  const onSubmit = async (data: Step2FormData) => {
+    console.log('🚀 Step 2 data:', data)
+    
+    try {
+      await navigateToNextStep(2, data)
+    } catch (error) {
+      console.error('❌ Error en submit Step 2:', error)
+      alert('Error al procesar el formulario. Por favor, inténtalo de nuevo.')
+    }
   }
 
-  const onSave = () => {
-    const data = watch()
-    updateFormData(data)
-    alert('✅ Borrador guardado exitosamente')
+  const onSave = async () => {
+    try {
+      const data = watch()
+      const saved = await saveDraft(2, data)
+      if (saved) {
+        alert('✅ Borrador guardado exitosamente')
+      } else {
+        alert('❌ Error al guardar el borrador')
+      }
+    } catch (error) {
+      console.error('❌ Error guardando Step 2:', error)
+      alert('❌ Error al guardar el borrador')
+    }
   }
 
   return (
@@ -93,23 +114,23 @@ export default function Step2() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         
-        {/* Alerta importante */}
-        <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
+        {/* Alerta importante sobre vigencia del pasaporte */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-center">
-            <div className="text-warning-600 mr-3">⚠️</div>
+            <div className="text-yellow-600 mr-3">⚠️</div>
             <div>
-              <h4 className="font-semibold text-warning-800">IMPORTANTE:</h4>
-              <p className="text-sm text-warning-700">
-                Su pasaporte debe tener una vigencia mínima de 6 meses posterior a la fecha en que va a viajar.
+              <h4 className="font-semibold text-yellow-800">IMPORTANTE:</h4>
+              <p className="text-sm text-yellow-700">
+                su Pasaporte debe tener una vigencia mínima de 6 meses posterior a la fecha en que va a viajar.
               </p>
             </div>
           </div>
         </div>
 
         {/* Sección: Información del Pasaporte */}
-        <div className="bg-primary-50 rounded-lg p-6 border border-primary-200">
-          <h3 className="text-lg font-semibold text-primary-900 mb-4">
-            Información del Pasaporte
+        <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+          <h3 className="text-lg font-semibold text-blue-900 mb-4">
+            🛂 Información del Pasaporte
           </h3>
           
           <div className="space-y-4">
@@ -118,8 +139,8 @@ export default function Step2() {
                 required: 'El número de pasaporte es requerido',
                 minLength: { value: 6, message: 'Número de pasaporte muy corto' }
               })}
-              label="Número de Pasaporte"
-              placeholder="Número de pasaporte"
+              label="NÚMERO DE PASAPORTE"
+              placeholder="Ejemplo: 166956432"
               error={errors.numeroPasaporte?.message}
               required
             />
@@ -128,14 +149,14 @@ export default function Step2() {
               <Input
                 {...register('fechaExpedicion', { required: 'La fecha de expedición es requerida' })}
                 type="date"
-                label="Fecha de Expedición"
+                label="FECHA DE EXPEDICIÓN (DD/MMM/AAAA)"
                 error={errors.fechaExpedicion?.message}
                 required
               />
               <Input
                 {...register('fechaVencimiento', { required: 'La fecha de vencimiento es requerida' })}
                 type="date"
-                label="Fecha de Vencimiento"
+                label="FECHA DE VENCIMIENTO (DD/MMM/AAAA)"
                 error={errors.fechaVencimiento?.message}
                 required
               />
@@ -143,8 +164,8 @@ export default function Step2() {
 
             <Input
               {...register('ciudadExpedicion', { required: 'La ciudad de expedición es requerida' })}
-              label="Ciudad de Expedición"
-              placeholder="Ciudad donde se expidió el pasaporte"
+              label="CIUDAD DE EXPEDICIÓN"
+              placeholder="Ejemplo: CARABOBO"
               error={errors.ciudadExpedicion?.message}
               required
             />
@@ -154,50 +175,47 @@ export default function Step2() {
         {/* Sección: Domicilio */}
         <div className="bg-gray-50 rounded-lg p-6 border">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Domicilio de Casa
+            🏠 Domicilio de Casa
           </h3>
           
           <div className="space-y-4">
             <TextArea
-              {...register('domicilio', { required: 'El domicilio completo es requerido' })}
-              label="Domicilio completo con colonia y código postal"
-              placeholder="Calle, número, colonia, código postal, municipio, estado"
+              {...register('domicilioCasa', { required: 'El domicilio de casa es requerido' })}
+              label="DOMICILIO DE CASA con colonia y código postal"
+              placeholder="Ejemplo: URB. GUAYABAL, CONJUNTO J, CASA NRO 60, MUN. SAN JOAQUIN, EDO CARABOBO."
               rows={3}
-              helperText="Incluya: calle, número, colonia, código postal, municipio y estado"
-              error={errors.domicilio?.message}
+              helperText="Incluya: urbanización, conjunto, casa/apartamento, municipio, estado"
+              error={errors.domicilioCasa?.message}
               required
             />
 
-            <Input
-              {...register('telefonoCasa')}
-              type="tel"
-              label="Teléfono de Casa"
-              placeholder="Incluir código de área (ej: +52 33 1234 5678)"
-              helperText="Opcional - Si no tiene, déjelo vacío"
-              error={errors.telefonoCasa?.message}
-            />
-
-            <Input
-              {...register('celular', { 
-                required: 'El número de celular es requerido',
-                pattern: {
-                  value: /^[\+]?[0-9\s\-]{10,}$/,
-                  message: 'Formato de teléfono inválido'
-                }
-              })}
-              type="tel"
-              label="Número de Celular"
-              placeholder="+52 123 456 7890"
-              error={errors.celular?.message}
-              required
-            />
+            <div className="grid md:grid-cols-2 gap-4">
+              <Input
+                {...register('telefonoCasa')}
+                type="tel"
+                label="TELÉFONO DE CASA"
+                placeholder="NO TENGO (si no tiene)"
+                helperText="Escriba 'NO TENGO' si no tiene teléfono de casa"
+                error={errors.telefonoCasa?.message}
+              />
+              <Input
+                {...register('celular', { 
+                  required: 'El número de celular es requerido'
+                })}
+                type="tel"
+                label="CELULAR"
+                placeholder="Ejemplo: +584244037938"
+                error={errors.celular?.message}
+                required
+              />
+            </div>
           </div>
         </div>
 
         {/* Sección: Información de Contacto */}
-        <div className="bg-secondary-50 rounded-lg p-6 border border-secondary-200">
-          <h3 className="text-lg font-semibold text-secondary-900 mb-4">
-            Información de Contacto
+        <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+          <h3 className="text-lg font-semibold text-green-900 mb-4">
+            📧 Información de Contacto
           </h3>
           
           <div className="space-y-4">
@@ -210,44 +228,44 @@ export default function Step2() {
                 }
               })}
               type="email"
-              label="Correo Electrónico (obligatorio)"
-              placeholder="ejemplo@correo.com"
+              label="CORREO ELECTRÓNICO *obligatorio*"
+              placeholder="Ejemplo: samgusmathias@gmail.COM"
               error={errors.correoElectronico?.message}
               required
             />
 
             <RadioGroup 
-              label="¿Ha utilizado otros números de teléfono en los últimos 5 años?"
-              error={errors.otrosNumeros?.message}
+              label="HA UTILIZADO OTROS NUMERO DE TELEFONO EL LOS ULTIMOS 5 AÑOS (PONER LOS NUMEROS)"
+              error={errors.haUtilizadoOtrosNumeros?.message}
             >
               <RadioOption
-                {...register('otrosNumeros', { required: 'Debe responder esta pregunta' })}
+                {...register('haUtilizadoOtrosNumeros', { required: 'Debe responder esta pregunta' })}
                 value="SI"
                 label="Sí"
               >
-                {watchOtrosNumeros === 'SI' && (
+                {watchHaUtilizadoOtrosNumeros === 'SI' && (
                   <TextArea
-                    {...register('listaNumeros', { 
-                      required: watchOtrosNumeros === 'SI' ? 'Liste los números anteriores' : false 
+                    {...register('listaOtrosNumeros', { 
+                      required: watchHaUtilizadoOtrosNumeros === 'SI' ? 'Liste los números anteriores' : false 
                     })}
-                    placeholder="Liste los números telefónicos anteriores"
+                    placeholder="Liste los números telefónicos anteriores que ha utilizado"
                     rows={2}
-                    error={errors.listaNumeros?.message}
+                    error={errors.listaOtrosNumeros?.message}
                   />
                 )}
               </RadioOption>
               <RadioOption
-                {...register('otrosNumeros')}
+                {...register('haUtilizadoOtrosNumeros')}
                 value="NO"
                 label="No"
               />
             </RadioGroup>
 
-            <TextArea
+            <Input
               {...register('correosAdicionales')}
-              label="Direcciones de correos adicionales en los últimos 5 años"
-              placeholder="Liste correos electrónicos adicionales utilizados"
-              rows={2}
+              type="email"
+              label="DIRECCIONES DE CORREOS ADICIONALES EN LOS ULTIMOS 5 AÑOS"
+              placeholder="Ejemplo: SAMGUSALCEDO30@GMAIL.COM"
               helperText="Opcional - Solo si ha utilizado otros correos"
               error={errors.correosAdicionales?.message}
             />
@@ -255,24 +273,24 @@ export default function Step2() {
         </div>
 
         {/* Sección: Redes Sociales */}
-        <div className="bg-gray-50 rounded-lg p-6 border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Redes Sociales
+        <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
+          <h3 className="text-lg font-semibold text-purple-900 mb-4">
+            📱 Redes Sociales
           </h3>
           
           <div className="space-y-4">
             <TextArea
               {...register('redesSociales', { required: 'Debe listar sus redes sociales' })}
-              label="Nombre de redes sociales que maneja y nombre de usuario (sin contraseña)"
-              placeholder="Ejemplo:&#10;INSTAGRAM: usuario123&#10;FACEBOOK: Nombre Apellido&#10;TWITTER: @usuario"
-              rows={4}
-              helperText="Incluya todas las plataformas: Facebook, Instagram, Twitter, LinkedIn, TikTok, etc."
+              label="NOMBRE DE REDES SOCIALES QUE MANEJA Y NOMBRE DE USUARIO (SIN CONTRASEÑA)"
+              placeholder="Ejemplo:&#10;INSTAGRAM: GUSTAVOSALCEDO577&#10;FACEBOOK: GUSTAVO SALCEDO"
+              rows={3}
+              helperText="Incluya todas las plataformas: Instagram, Facebook, Twitter, LinkedIn, TikTok, etc."
               error={errors.redesSociales?.message}
               required
             />
 
             <RadioGroup 
-              label="¿Utiliza plataformas de redes sociales adicionales en los últimos 5 años?"
+              label="UTILIZA PLATAFORMA DE REDES SOCIALES ADICIONALES EN LOS ULTIMOS 5 AÑOS"
               error={errors.plataformasAdicionales?.message}
             >
               <RadioOption
@@ -282,10 +300,10 @@ export default function Step2() {
               >
                 {watchPlataformasAdicionales === 'SI' && (
                   <TextArea
-                    {...register('listaPlataformas')}
+                    {...register('listaPlataformasAdicionales')}
                     placeholder="Especifique plataformas y usuarios anteriores"
                     rows={2}
-                    error={errors.listaPlataformas?.message}
+                    error={errors.listaPlataformasAdicionales?.message}
                   />
                 )}
               </RadioOption>
@@ -293,6 +311,56 @@ export default function Step2() {
                 {...register('plataformasAdicionales')}
                 value="NO"
                 label="No"
+              />
+            </RadioGroup>
+          </div>
+        </div>
+
+        {/* Sección: Información Personal Adicional */}
+        <div className="bg-orange-50 rounded-lg p-6 border border-orange-200">
+          <h3 className="text-lg font-semibold text-orange-900 mb-4">
+            👤 Información Personal Adicional
+          </h3>
+          
+          <div className="space-y-4">
+            <Input
+              {...register('idiomas', { 
+                required: 'Debe indicar los idiomas que habla' 
+              })}
+              label="IDIOMAS QUE HABLA"
+              placeholder="Ejemplo: ESPAÑOL/INGLES"
+              error={errors.idiomas?.message}
+              required
+            />
+
+            <RadioGroup 
+              label="ESTADO CIVIL"
+              error={errors.estadoCivil?.message}
+            >
+              <RadioOption
+                {...register('estadoCivil', { required: 'Debe seleccionar su estado civil' })}
+                value="SOLTERO"
+                label="Soltero(a)"
+              />
+              <RadioOption
+                {...register('estadoCivil')}
+                value="CASADO"
+                label="Casado(a)"
+              />
+              <RadioOption
+                {...register('estadoCivil')}
+                value="DIVORCIADO"
+                label="Divorciado(a)"
+              />
+              <RadioOption
+                {...register('estadoCivil')}
+                value="VIUDO"
+                label="Viudo(a)"
+              />
+              <RadioOption
+                {...register('estadoCivil')}
+                value="SEPARADO"
+                label="Separado(a)"
               />
             </RadioGroup>
           </div>

@@ -3,6 +3,7 @@
 import { useDS160Store } from '@/store/ds160-store'
 import { cn } from '@/lib/utils'
 import { CheckCircle2, Circle } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 interface StepProgressProps {
   className?: string
@@ -20,7 +21,15 @@ const steps = [
 
 export function StepProgress({ className }: StepProgressProps) {
   const { currentStep, isStepCompleted, getStepProgress } = useDS160Store()
-  const progress = getStepProgress()
+  const [isClient, setIsClient] = useState(false)
+  
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Evitar error de hidratación mostrando valor por defecto hasta que se hidrate
+  const displayStep = isClient ? currentStep : 1
+  const progress = isClient ? getStepProgress() : 0
 
   return (
     <div className={cn("w-full", className)}>
@@ -42,9 +51,9 @@ export function StepProgress({ className }: StepProgressProps) {
       <nav aria-label="Progreso del formulario">
         <ol className="space-y-4 md:flex md:space-y-0 md:space-x-8 overflow-x-auto">
           {steps.map((step) => {
-            const isCompleted = isStepCompleted(step.id)
-            const isCurrent = currentStep === step.id
-            const isAccessible = step.id <= currentStep || isCompleted
+            const isCompleted = isClient ? isStepCompleted(step.id) : false
+            const isCurrent = displayStep === step.id
+            const isAccessible = step.id <= displayStep || isCompleted
 
             return (
               <li key={step.id} className="md:flex-1">

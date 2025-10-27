@@ -13,11 +13,17 @@ export function middleware(request: NextRequest) {
       return NextResponse.next()
     }
     
+    // Permitir acceso libre al primer paso para iniciar el formulario
+    if (request.nextUrl.pathname === '/form/step-1' || request.nextUrl.pathname === '/form') {
+      return NextResponse.next()
+    }
+    
     // Si no hay token, verificar la cookie de formulario normal
     const formCookie = request.cookies.get('form-storage')
     
     if (!formCookie) {
-      return NextResponse.redirect(new URL('/client-info', request.url))
+      // Redirigir al Paso 1 del formulario en lugar de la página de información del cliente
+      return NextResponse.redirect(new URL('/form/step-1', request.url))
     }
 
     try {
@@ -26,11 +32,11 @@ export function middleware(request: NextRequest) {
       const isInitialized = formData.state?.isFormInitialized
       
       // Verificar que hay información del cliente y el formulario está inicializado
-      if (!clientInfo || !isInitialized) {
-        return NextResponse.redirect(new URL('/client-info', request.url))
+      if (!isInitialized) {
+        return NextResponse.redirect(new URL('/form/step-1', request.url))
       }
     } catch (error) {
-      return NextResponse.redirect(new URL('/client-info', request.url))
+      return NextResponse.redirect(new URL('/form/step-1', request.url))
     }
   }
 

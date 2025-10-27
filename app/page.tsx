@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
+import { useAdminStore } from '@/store/admin-store'
 import ClientLogin from '@/components/client-login'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
@@ -26,6 +27,7 @@ import {
 export default function HomePage() {
   const router = useRouter()
   const { isAuthenticated, logout } = useAuthStore()
+  const { adminLogin } = useAdminStore()
   const [showAuth, setShowAuth] = useState(false)
   const [showAdminModal, setShowAdminModal] = useState(false)
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' })
@@ -33,8 +35,15 @@ export default function HomePage() {
   const handleAdminLogin = () => {
     // Credenciales simples para acceso de admin
     if (adminCredentials.username === 'almita1982' && adminCredentials.password === 'Oziel2002') {
-      setShowAdminModal(false)
-      router.push('/admin')
+      // Usar el sistema de login del admin store con la contraseña correcta
+      const loginSuccess = adminLogin('admin123')
+      if (loginSuccess) {
+        setShowAdminModal(false)
+        setAdminCredentials({ username: '', password: '' })
+        router.push('/admin')
+      } else {
+        alert('Error interno del sistema')
+      }
     } else {
       alert('Usuario o contraseña incorrectos')
       setAdminCredentials({ username: '', password: '' })
@@ -210,7 +219,7 @@ export default function HomePage() {
           <p className="text-2xl md:text-3xl mb-8 text-blue-100 font-medium">
             Hacemos tu trámite fácil
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col gap-4 justify-center items-center">
             <Button 
               onClick={() => window.open('https://wa.me/5255539380060?text=Hola%2C%20necesito%20ayuda%20para%20llenar%20mi%20formulario%20DS-160%20para%20visa%20americana.%20%C2%BFPodrían%20asistirme%3F', '_blank')}
               className="bg-gold-500 hover:bg-gold-600 text-black font-semibold px-8 py-4 text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
@@ -218,6 +227,12 @@ export default function HomePage() {
               🇺🇸 Solicitar Ayuda DS-160
             </Button>
             
+            <Button 
+              onClick={() => window.open('https://wa.me/5255539380060?text=Hola%2C%20necesito%20ayuda%20para%20mi%20tr%C3%A1mite%20SENTRI%20(Global%20Entry)%20para%20cruce%20r%C3%A1pido%20fronterizo.%20%C2%BFPodrían%20asistirme%3F', '_blank')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
+            >
+              🚗 Solicitar Ayuda Trámite SENTRI
+            </Button>
           </div>
         </div>
         

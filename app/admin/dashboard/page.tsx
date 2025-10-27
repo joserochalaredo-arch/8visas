@@ -86,15 +86,31 @@ export default function AdminDashboard() {
   
   const router = useRouter()
   const allClients = getAllClients()
-  
+
   // Lógica de paginación
   const totalPages = Math.ceil(allClients.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const clients = allClients.slice(startIndex, endIndex)
 
-  // Ya no verificamos autenticación adicional
-  // El acceso está controlado por el modal del homepage
+  // Verificar autenticación del admin
+  useEffect(() => {
+    if (!isAdminAuthenticated) {
+      router.push('/')
+    }
+  }, [isAdminAuthenticated, router])
+
+  // Show loading while checking authentication
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verificando acceso...</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,13 +136,46 @@ export default function AdminDashboard() {
     setNewClientComments('')
     setPendingClientData({ name: '', email: '', phone: '', comments: '' })
     // Redirigir al formulario con el token
-    router.push(`/form/step-1?token=${token}`)
+    router.push(`/form/single-page?token=${token}`)
+  }
+
+  const handleAdminFillsSinglePage = () => {
+    // El admin llenará el formulario en página única - generar token y abrir formulario
+    const token = generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
+    setShowWhoFillsModal(false)
+    // Limpiar formulario
+    setNewClientName('')
+    setNewClientEmail('')
+    setNewClientPhone('')
+    setNewClientComments('')
+    setPendingClientData({ name: '', email: '', phone: '', comments: '' })
+    // Redirigir al formulario de página única con el token
+    router.push(`/form/single-page?token=${token}`)
   }
 
   const handleClientFillsForm = () => {
     // El cliente llenará el formulario - generar token y mostrar link
     const token = generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
-    const clientLink = `${window.location.origin}/form/step-1?token=${token}`
+    const clientLink = `${window.location.origin}/form/single-page?token=${token}`
+    
+    setShowWhoFillsModal(false)
+    // Limpiar formulario
+    setNewClientName('')
+    setNewClientEmail('')
+    setNewClientPhone('')
+    setNewClientComments('')
+    setPendingClientData({ name: '', email: '', phone: '', comments: '' })
+    
+    // Mostrar el link al admin en modal
+    setGeneratedLink(clientLink)
+    setGeneratedClientName(pendingClientData.name)
+    setShowLinkModal(true)
+  }
+
+  const handleClientFillsSinglePage = () => {
+    // El cliente llenará el formulario en página única - generar token y mostrar link
+    const token = generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
+    const clientLink = `${window.location.origin}/form/single-page?token=${token}`
     
     setShowWhoFillsModal(false)
     // Limpiar formulario
@@ -342,7 +391,10 @@ export default function AdminDashboard() {
                       <td className="px-4 py-4 whitespace-nowrap">
                         <PaymentStatusSelector
                           currentStatus={client.paymentStatus || 'pending'}
-                          onStatusChange={(status) => updatePaymentStatus(client.token, status)}
+                          onStatusChange={(status) => {
+                            console.log('Cambiando estado de pago para:', client.clientName, 'Nuevo estado:', status)
+                            updatePaymentStatus(client.token, status)
+                          }}
                         />
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -367,66 +419,65 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex flex-col space-y-1">
-                          <div className="flex space-x-1">
+                          <div className="flex flex-wrap gap-1">
+                            {/* Botón Llenar Formulario DS-160 */}
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => router.push(`/admin/client/${client.token}`)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                console.log('Navegando al formulario DS-160 para:', client.clientName, 'Token:', client.token)
+                                router.push(`/form/single-page?token=${client.token}`)
+                              }}
                               className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2 py-1"
                             >
-                              <EyeIcon className="h-3 w-3 mr-1" />
-                              Ver
+                              <FileText className="h-3 w-3 mr-1" />
+                              {client.formProgress > 0 ? 'Continuar DS-160' : 'Comenzar DS-160'}
                             </Button>
-                            
-                            {client.formProgress > 0 && client.formProgress < 100 && (
-                              <Button
-                                size="sm"
-                                onClick={() => router.push(`/form/step-1?token=${client.token}`)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1"
-                              >
-                                <ArrowRightIcon className="h-3 w-3 mr-1" />
-                                Continuar
-                              </Button>
-                            )}
-                            
+
+                            {/* Botón Ver Link - Generar y mostrar link para cliente */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                console.log('Generando link para cliente:', client.clientName)
+                                const clientLink = `${window.location.origin}/form/single-page?token=${client.token}`
+                                setGeneratedLink(clientLink)
+                                setGeneratedClientName(client.clientName)
+                                setShowLinkModal(true)
+                              }}
+                              className="text-green-600 border-green-200 hover:bg-green-50 text-xs px-2 py-1"
+                            >
+                              <EyeIcon className="h-3 w-3 mr-1" />
+                              Ver Link Cliente
+                            </Button>
+
+                            {/* PDF Generator - Solo si formulario está completo */}
                             {client.formProgress >= 100 && (
                               <PDFGenerator 
                                 client={client}
                                 onGenerated={() => console.log('PDF generado para', client.clientName)}
                               />
                             )}
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => router.push(`/admin/client/${client.token}`)}
-                              className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs px-2 py-1"
-                            >
-                              <FileText className="h-3 w-3 mr-1" />
-                              {client.formProgress > 0 ? 'Continuar' : 'Comenzar'}
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const clientLink = `${window.location.origin}/form/step-1?token=${client.token}`
-                                setGeneratedLink(clientLink)
-                                setGeneratedClientName(client.clientName)
-                                setShowLinkModal(true)
-                              }}
-                              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs px-2 py-1"
-                            >
-                              <EyeIcon className="h-3 w-3 mr-1" />
-                              Ver Link
-                            </Button>
                           </div>
                           
                           <div className="flex space-x-1">
                             <Button
                               size="sm"
                               variant={client.isActive ? "outline" : "secondary"}
-                              onClick={() => client.isActive ? deactivateToken(client.token) : activateToken(client.token)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                console.log('Cambiando estado del cliente:', client.clientName, 'Activo:', client.isActive)
+                                if (client.isActive) {
+                                  deactivateToken(client.token)
+                                } else {
+                                  activateToken(client.token)
+                                }
+                              }}
                               className={`text-xs px-2 py-1 ${client.isActive 
                                 ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
                                 : "text-green-600 border-green-200 hover:bg-green-50"
@@ -448,7 +499,12 @@ export default function AdminDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleDeleteWithConfirmation(client.token, client.clientName)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                console.log('Intentando eliminar cliente:', client.clientName)
+                                handleDeleteWithConfirmation(client.token, client.clientName)
+                              }}
                               className={`text-xs px-2 py-1 ${
                                 (deleteConfirmations[client.token] || 0) > 0
                                   ? "text-red-800 border-red-500 bg-red-100 hover:bg-red-200"
@@ -547,7 +603,7 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               {/* Opción: Admin llena el formulario */}
               <div 
-                onClick={handleAdminFillsForm}
+                onClick={handleAdminFillsSinglePage}
                 className="w-full p-6 border-2 border-blue-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-blue-400 hover:shadow-lg hover:scale-[1.02] bg-gradient-to-r from-blue-50 to-indigo-50 group"
               >
                 <div className="flex items-center space-x-4">
@@ -558,10 +614,10 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-blue-900 group-hover:text-blue-800">
-                      Yo llenaré el formulario
+                      Yo llenaré el formulario DS-160
                     </h3>
                     <p className="text-sm text-blue-700 mt-1 opacity-90">
-                      Se abrirá el formulario para que lo completes inmediatamente
+                      Se abrirá el formulario completo para que lo completes inmediatamente
                     </p>
                   </div>
                   <div className="text-blue-400 group-hover:text-blue-600 transition-colors">
@@ -574,7 +630,7 @@ export default function AdminDashboard() {
               
               {/* Opción: Cliente llena el formulario */}
               <div 
-                onClick={handleClientFillsForm}
+                onClick={handleClientFillsSinglePage}
                 className="w-full p-6 border-2 border-green-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-green-400 hover:shadow-lg hover:scale-[1.02] bg-gradient-to-r from-green-50 to-emerald-50 group"
               >
                 <div className="flex items-center space-x-4">
@@ -585,7 +641,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-green-900 group-hover:text-green-800">
-                      El cliente llenará el formulario
+                      El cliente llenará el formulario DS-160
                     </h3>
                     <p className="text-sm text-green-700 mt-1 opacity-90">
                       Se generará un link único para enviar al cliente

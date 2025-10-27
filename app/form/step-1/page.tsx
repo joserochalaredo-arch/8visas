@@ -3,57 +3,44 @@
 import { useForm } from 'react-hook-form'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useDS160Store } from '@/store/ds160-store'
-import { useClientProgress } from '@/hooks/use-client-progress'
+import { useStepNavigation } from '@/hooks/useStepNavigation'
 import { useAuthStore } from '@/store/auth-store'
 import { FormWrapper } from '@/components/form-wrapper'
-import { ClientInfoPanel } from '@/components/client-info-panel'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
 import { useState, useEffect, Suspense } from 'react'
 
 interface Step1FormData {
-  ciudadCita: 'TIJUANA' | 'NOGALES' | 'CIUDAD_JUAREZ' | 'NUEVO_LAREDO' | 'MONTERREY' | 'MATAMOROS' | 'GUADALAJARA' | 'HERMOSILLO' | 'CIUDAD_DE_MEXICO' | 'MERIDA' | ''
-  citaCAS: 'TIJUANA' | 'NOGALES' | 'CIUDAD_JUAREZ' | 'NUEVO_LAREDO' | 'MONTERREY' | 'MATAMOROS' | 'GUADALAJARA' | 'HERMOSILLO' | 'CIUDAD_DE_MEXICO' | 'MERIDA' | ''
   nombreCompleto: string
   fechaNacimiento: string
-  ciudadNacimiento: string
-  estadoNacimiento: string
-  paisNacimiento: string
+  ciudadEstadoPaisNacimiento: string
   otraNacionalidad: 'SI' | 'NO' | ''
   especificarNacionalidad?: string
+  consuladoDeseado: string
+  oficinaCAS: string
 }
 
 function Step1Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { formData, updateFormData, setCurrentStep } = useDS160Store()
-  const { updateProgress } = useClientProgress()
+  const { formData, setCurrentStep } = useDS160Store()
+  const { navigateToNextStep, saveDraft } = useStepNavigation()
   const { login } = useAuthStore()
   
   const { register, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm<Step1FormData>({
     defaultValues: {
-      ciudadCita: formData.ciudadCita,
-      citaCAS: formData.citaCAS,
-      nombreCompleto: formData.nombreCompleto,
-      fechaNacimiento: formData.fechaNacimiento,
-      ciudadNacimiento: formData.ciudadNacimiento,
-      estadoNacimiento: formData.estadoNacimiento,
-      paisNacimiento: formData.paisNacimiento,
-      otraNacionalidad: formData.otraNacionalidad,
-      especificarNacionalidad: formData.especificarNacionalidad,
+      nombreCompleto: formData.nombreCompleto || '',
+      fechaNacimiento: formData.fechaNacimiento || '',
+      ciudadEstadoPaisNacimiento: formData.ciudadEstadoPaisNacimiento || '',
+      otraNacionalidad: formData.otraNacionalidad || '',
+      especificarNacionalidad: formData.especificarNacionalidad || '',
+      consuladoDeseado: (formData as any).consuladoDeseado || '',
+      oficinaCAS: (formData as any).oficinaCAS || ''
     },
     mode: 'onChange'
   })
 
-  // Registrar campos de Select para validación
-  useEffect(() => {
-    register('ciudadCita', { required: 'Debe seleccionar una ciudad para la cita consular' })
-    register('citaCAS', { required: 'Debe seleccionar una ciudad para la cita CAS' })
-  }, [register])
-
-  const watchCiudadCita = watch('ciudadCita')
-  const watchCitaCAS = watch('citaCAS')
   const watchOtraNacionalidad = watch('otraNacionalidad')
 
   useEffect(() => {
@@ -78,8 +65,6 @@ function Step1Content() {
               // Autenticar automáticamente con el token
               const loginSuccess = login(urlToken)
               if (loginSuccess) {
-                // Prellenar el nombre del cliente en el formulario
-                setValue('nombreCompleto', clientWithToken.name || '')
                 return // Mantener en la página actual del DS-160
               }
             }
@@ -88,6 +73,7 @@ function Step1Content() {
           }
         }
         // Si el token no es válido, redirigir
+        console.log('Token no válido, redirigiendo...')
         router.push('/')
         return
       }
@@ -95,6 +81,7 @@ function Step1Content() {
       // Si no hay token en URL, verificar autenticación normal
       const authData = localStorage.getItem('auth-storage')
       if (!authData) {
+        console.log('No hay datos de auth, redirigiendo...')
         router.push('/')
         return
       }
@@ -102,27 +89,45 @@ function Step1Content() {
       try {
         const parsed = JSON.parse(authData)
         if (!parsed?.state?.isAuthenticated) {
+          console.log('No autenticado, redirigiendo...')
           router.push('/')
         }
       } catch (error) {
+        console.log('Error parsing auth data, redirigiendo...')
         router.push('/')
       }
     }
     
     // Ejecutar la verificación con un pequeño retraso
     setTimeout(checkAuth, 100)
-  }, [router, searchParams, login, setValue])
+  }, [router, searchParams, login])
 
-  const onSubmit = (data: Step1FormData) => {
-    updateFormData(data)
-    updateProgress(1, { step1: data }) // Actualizar progreso en admin
-    router.push('/form/step-2')
+  const onSubmit = async (data: Step1FormData) => {
+    console.log('🚀 Form submitted with data:', data)
+    console.log('🚀 Navegando automáticamente a step-2...')
+    
+    try {
+      // Usar la navegación automática mejorada
+      await navigateToNextStep(1, data)
+    } catch (error) {
+      console.error('❌ Error en submit:', error)
+      alert('Error al procesar el formulario. Por favor, inténtalo de nuevo.')
+    }
   }
 
-  const onSave = () => {
-    const data = watch()
-    updateFormData(data)
-    alert('✅ Borrador guardado exitosamente')
+  const onSave = async () => {
+    try {
+      const data = watch()
+      const saved = await saveDraft(1, data)
+      if (saved) {
+        alert('✅ Borrador guardado exitosamente')
+      } else {
+        alert('❌ Error al guardar el borrador')
+      }
+    } catch (error) {
+      console.error('❌ Error guardando:', error)
+      alert('❌ Error al guardar el borrador')
+    }
   }
 
   const handleBackToMenu = () => {
@@ -131,165 +136,205 @@ function Step1Content() {
 
   return (
     <div>
-      {/* Panel de información del cliente */}
-      <ClientInfoPanel currentStep={1} />
-      
       <FormWrapper
-        title="Información Personal y Cita"
-        description="Complete su información personal básica y seleccione la ciudad donde desea la cita"
+        title="Información Personal"
+        description="Datos personales básicos y selección de consulado/CAS"
         onNext={() => handleSubmit(onSubmit)()}
         onSave={onSave}
         onBackToMenu={handleBackToMenu}
         isValid={isValid}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        
-        {/* Sección: Ciudad de la Cita */}
-        <div className="bg-primary-50 rounded-lg p-6 border border-primary-200">
-          <h3 className="text-lg font-semibold text-primary-900 mb-4">
-            Información de la Cita
-          </h3>
           
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Ciudad en donde quiere la cita consular *
-            </label>
-            <Select
-              value={watchCiudadCita}
-              onValueChange={(value) => setValue('ciudadCita', value as any, { shouldValidate: true })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccione una ciudad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TIJUANA">Tijuana</SelectItem>
-                <SelectItem value="NOGALES">Nogales</SelectItem>
-                <SelectItem value="CIUDAD_JUAREZ">Ciudad Juárez</SelectItem>
-                <SelectItem value="NUEVO_LAREDO">Nuevo Laredo</SelectItem>
-                <SelectItem value="MONTERREY">Monterrey</SelectItem>
-                <SelectItem value="MATAMOROS">Matamoros</SelectItem>
-                <SelectItem value="GUADALAJARA">Guadalajara</SelectItem>
-                <SelectItem value="HERMOSILLO">Hermosillo</SelectItem>
-                <SelectItem value="CIUDAD_DE_MEXICO">Ciudad de México</SelectItem>
-                <SelectItem value="MERIDA">Mérida</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.ciudadCita && (
-              <p className="text-sm text-red-600">{errors.ciudadCita.message}</p>
-            )}
-          </div>
-          
-          {/* Pregunta sobre cita CAS */}
-          <div className="mt-6 space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Ciudad donde quiere la cita CAS *
-            </label>
-            <Select
-              value={watchCitaCAS}
-              onValueChange={(value) => setValue('citaCAS', value as any, { shouldValidate: true })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccione una ciudad para CAS" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TIJUANA">Tijuana</SelectItem>
-                <SelectItem value="NOGALES">Nogales</SelectItem>
-                <SelectItem value="CIUDAD_JUAREZ">Ciudad Juárez</SelectItem>
-                <SelectItem value="NUEVO_LAREDO">Nuevo Laredo</SelectItem>
-                <SelectItem value="MONTERREY">Monterrey</SelectItem>
-                <SelectItem value="MATAMOROS">Matamoros</SelectItem>
-                <SelectItem value="GUADALAJARA">Guadalajara</SelectItem>
-                <SelectItem value="HERMOSILLO">Hermosillo</SelectItem>
-                <SelectItem value="CIUDAD_DE_MEXICO">Ciudad de México</SelectItem>
-                <SelectItem value="MERIDA">Mérida</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.citaCAS && (
-              <p className="text-sm text-red-600">{errors.citaCAS.message}</p>
-            )}
-          </div>
-        </div>
+          {/* Sección: Selección de Consulado y CAS - AL PRINCIPIO */}
+          <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">
+              🏛️ Selección de Consulado y Oficina CAS
+            </h3>
 
-        {/* Sección: Datos Personales */}
-        <div className="bg-gray-50 rounded-lg p-6 border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Datos Personales
-          </h3>
-          
-          <div className="space-y-4">
-            <Input
-              {...register('nombreCompleto', { 
-                required: 'El nombre completo es requerido',
-                minLength: { value: 2, message: 'Nombre debe tener al menos 2 caracteres' }
-              })}
-              label="Nombre Completo (Como viene en el pasaporte)"
-              placeholder="Apellidos y Nombres"
-              helperText="Escriba exactamente como aparece en su pasaporte"
-              error={errors.nombreCompleto?.message}
-              required
-            />
+            <div className="space-y-6">
+              {/* Consulado Deseado */}
+              <div>
+                <RadioGroup 
+                  label="Consulado Deseado (9 consulados + embajada CDMX) *"
+                  error={errors.consuladoDeseado?.message}
+                >
+                  <RadioOption
+                    {...register('consuladoDeseado', { required: 'Debe seleccionar un consulado' })}
+                    value="EMBAJADA_CDMX"
+                    label="Embajada - Ciudad de México"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="GDL"
+                    label="Consulado Guadalajara, Jalisco"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="MTY"
+                    label="Consulado Monterrey, Nuevo León"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="TIJ"
+                    label="Consulado Tijuana, Baja California"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="JUA"
+                    label="Consulado Ciudad Juárez, Chihuahua"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="NOG"
+                    label="Consulado Nogales, Sonora"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="NLD"
+                    label="Consulado Nuevo Laredo, Tamaulipas"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="MAT"
+                    label="Consulado Matamoros, Tamaulipas"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="HER"
+                    label="Consulado Hermosillo, Sonora"
+                  />
+                  <RadioOption
+                    {...register('consuladoDeseado')}
+                    value="MER"
+                    label="Consulado Mérida, Yucatán"
+                  />
+                </RadioGroup>
+              </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+              {/* Oficina CAS */}
+              <div>
+                <RadioGroup 
+                  label="Oficina CAS (10 oficinas disponibles) *"
+                  error={errors.oficinaCAS?.message}
+                >
+                  <RadioOption
+                    {...register('oficinaCAS', { required: 'Debe seleccionar una oficina CAS' })}
+                    value="CAS_GDL"
+                    label="CAS Guadalajara, Jalisco"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_MTY"
+                    label="CAS Monterrey, Nuevo León"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_MEX"
+                    label="CAS Ciudad de México"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_TIJ"
+                    label="CAS Tijuana, Baja California"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_JUA"
+                    label="CAS Ciudad Juárez, Chihuahua"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_NOG"
+                    label="CAS Nogales, Sonora"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_NLD"
+                    label="CAS Nuevo Laredo, Tamaulipas"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_MAT"
+                    label="CAS Matamoros, Tamaulipas"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_HER"
+                    label="CAS Hermosillo, Sonora"
+                  />
+                  <RadioOption
+                    {...register('oficinaCAS')}
+                    value="CAS_MER"
+                    label="CAS Mérida, Yucatán"
+                  />
+                </RadioGroup>
+              </div>
+            </div>
+          </div>
+
+          {/* Sección: Información Personal */}
+          <div className="bg-gray-50 rounded-lg p-6 border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              📋 Datos Personales
+            </h3>
+            
+            <div className="space-y-4">
+              <Input
+                {...register('nombreCompleto', { 
+                  required: 'El nombre completo es requerido',
+                  minLength: { value: 2, message: 'Nombre debe tener al menos 2 caracteres' }
+                })}
+                label="Nombre Completo (Como viene en el pasaporte)"
+                placeholder="Apellidos y Nombres"
+                helperText="Escriba exactamente como aparece en su pasaporte"
+                error={errors.nombreCompleto?.message}
+                required
+              />
+
               <Input
                 {...register('fechaNacimiento', { required: 'La fecha de nacimiento es requerida' })}
                 type="date"
-                label="Fecha de Nacimiento"
+                label="Fecha de Nacimiento (DD/MM/AAAA)"
                 error={errors.fechaNacimiento?.message}
                 required
               />
-              <Input
-                {...register('ciudadNacimiento', { required: 'La ciudad de nacimiento es requerida' })}
-                label="Ciudad de Nacimiento"
-                placeholder="Ciudad"
-                error={errors.ciudadNacimiento?.message}
-                required
-              />
-            </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
               <Input
-                {...register('estadoNacimiento', { required: 'El estado de nacimiento es requerido' })}
-                label="Estado de Nacimiento"
-                placeholder="Estado"
-                error={errors.estadoNacimiento?.message}
+                {...register('ciudadEstadoPaisNacimiento', { required: 'La ciudad, estado, país de nacimiento es requerido' })}
+                label="Ciudad, Estado, País - De Nacimiento"
+                placeholder="Ejemplo: Yaracuy, Venezuela"
+                error={errors.ciudadEstadoPaisNacimiento?.message}
                 required
               />
-              <Input
-                {...register('paisNacimiento', { required: 'El país de nacimiento es requerido' })}
-                label="País de Nacimiento"
-                placeholder="País"
-                error={errors.paisNacimiento?.message}
-                required
-              />
-            </div>
 
-            <RadioGroup 
-              label="¿Tiene otra nacionalidad?"
-              error={errors.otraNacionalidad?.message}
-            >
-              <RadioOption
-                {...register('otraNacionalidad', { required: 'Debe indicar si tiene otra nacionalidad' })}
-                value="SI"
-                label="Sí"
+              <RadioGroup 
+                label="¿Tiene otra nacionalidad? (especificar)"
+                error={errors.otraNacionalidad?.message}
               >
-                {watchOtraNacionalidad === 'SI' && (
-                  <Input
-                    {...register('especificarNacionalidad', { 
-                      required: watchOtraNacionalidad === 'SI' ? 'Especifique la nacionalidad' : false 
-                    })}
-                    placeholder="Especificar nacionalidad"
-                    error={errors.especificarNacionalidad?.message}
-                  />
-                )}
-              </RadioOption>
-              <RadioOption
-                {...register('otraNacionalidad')}
-                value="NO"
-                label="No"
-              />
-            </RadioGroup>
+                <RadioOption
+                  {...register('otraNacionalidad', { required: 'Debe indicar si tiene otra nacionalidad' })}
+                  value="SI"
+                  label="Sí"
+                >
+                  {watchOtraNacionalidad === 'SI' && (
+                    <Input
+                      {...register('especificarNacionalidad', { 
+                        required: watchOtraNacionalidad === 'SI' ? 'Especifique la nacionalidad' : false 
+                      })}
+                      placeholder="Especificar nacionalidad"
+                      error={errors.especificarNacionalidad?.message}
+                    />
+                  )}
+                </RadioOption>
+                <RadioOption
+                  {...register('otraNacionalidad')}
+                  value="NO"
+                  label="No Aplica"
+                />
+              </RadioGroup>
+            </div>
           </div>
-        </div>
 
         </form>
       </FormWrapper>

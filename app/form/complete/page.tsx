@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuthStore } from '@/store/auth-store'
 import { useDS160Store } from '@/store/ds160-store'
-import { ClientInfoPanel } from '@/components/client-info-panel'
 import { FormCompletion } from '@/components/form-completion'
 
 export default function FormFinalStep() {
@@ -66,13 +65,6 @@ export default function FormFinalStep() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Panel de información del cliente */}
-        <ClientInfoPanel 
-          currentStep={8} 
-          showComments={true}
-          showProgress={true}
-        />
-        
         {/* Componente de finalización */}
         <FormCompletion onComplete={handleComplete} />
       </div>

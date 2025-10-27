@@ -2,16 +2,20 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export interface DS160FormData {
-  // Paso 1: Información Personal y Cita
-  ciudadCita: 'TIJUANA' | 'NOGALES' | 'CIUDAD_JUAREZ' | 'NUEVO_LAREDO' | 'MONTERREY' | 'MATAMOROS' | 'GUADALAJARA' | 'HERMOSILLO' | 'CIUDAD_DE_MEXICO' | 'MERIDA' | ''
-  citaCAS: 'TIJUANA' | 'NOGALES' | 'CIUDAD_JUAREZ' | 'NUEVO_LAREDO' | 'MONTERREY' | 'MATAMOROS' | 'GUADALAJARA' | 'HERMOSILLO' | 'CIUDAD_DE_MEXICO' | 'MERIDA' | ''
+  // Paso 1: Información Personal
   nombreCompleto: string
   fechaNacimiento: string
-  ciudadNacimiento: string
-  estadoNacimiento: string
-  paisNacimiento: string
+  ciudadEstadoPaisNacimiento: string
   otraNacionalidad: 'SI' | 'NO' | ''
   especificarNacionalidad?: string
+  consuladoDeseado: string
+  oficinaCAS: string
+  
+  // Campos anteriores para compatibilidad (se pueden remover después)
+  ciudadNacimiento?: string
+  estadoNacimiento?: string
+  paisNacimiento?: string
+  citaCAS?: 'GDL' | 'MTY' | 'MEX' | 'TIJ' | 'JUA' | 'NOG' | 'NLD' | 'MAT' | 'HER' | 'MER' | 'OTRO' | ''
 
   // Paso 2: Pasaporte y Contacto
   numeroPasaporte: string
@@ -28,16 +32,21 @@ export interface DS160FormData {
   redesSociales: string
   plataformasAdicionales: 'SI' | 'NO' | ''
   listaPlataformas?: string
-
-  // Paso 3: Idiomas, Estado Civil y Patrocinador
   idiomas: string
   estadoCivil: 'SOLTERO' | 'CASADO' | 'DIVORCIADO' | 'VIUDO' | 'SEPARADO' | ''
+  
+  // Nuevos campos del Paso 2
+  nombreQuienPaga?: string
+  personasQueViajan?: string
+  
+  // Campos anteriores para compatibilidad
+  ciudadCita?: 'GDL' | 'MTY' | 'MEX' | 'TIJ' | 'JUA' | 'NOG' | 'NLD' | 'MAT' | 'HER' | 'MER' | 'OTRO' | ''
+
+  // Paso 4: Viaje y Acompañantes
   nombrePatrocinador?: string
   telefonoPatrocinador?: string
   domicilioPatrocinador?: string
   parentesco?: string
-
-  // Paso 4: Viaje y Acompañantes
   fechaLlegada?: string
   duracionEstancia?: string
   hotel?: string
@@ -45,7 +54,6 @@ export interface DS160FormData {
   familiarEnUSA?: string
   domicilioFamiliarUSA?: string
   telefonoFamiliarUSA?: string
-  personasQueViajan?: string
 
   // Paso 5: Educación y Trabajo
   fechaInicioEstudios?: string
@@ -119,14 +127,20 @@ interface DS160Store {
 }
 
 const initialFormData: DS160FormData = {
-  ciudadCita: '',
-  citaCAS: '',
+  // Paso 1
   nombreCompleto: '',
   fechaNacimiento: '',
+  ciudadEstadoPaisNacimiento: '',
+  otraNacionalidad: '',
+  consuladoDeseado: '',
+  oficinaCAS: '',
+  // Campos anteriores para compatibilidad
   ciudadNacimiento: '',
   estadoNacimiento: '',
   paisNacimiento: '',
-  otraNacionalidad: '',
+  idiomas: '',
+  citaCAS: '',
+  // Paso 2
   numeroPasaporte: '',
   fechaExpedicion: '',
   fechaVencimiento: '',
@@ -137,8 +151,15 @@ const initialFormData: DS160FormData = {
   otrosNumeros: '',
   redesSociales: '',
   plataformasAdicionales: '',
-  idiomas: '',
   estadoCivil: '',
+  nombreQuienPaga: '',
+  personasQueViajan: '',
+  // Campos anteriores para compatibilidad
+  ciudadCita: '',
+  // Paso 4
+  nombrePatrocinador: '',
+  parentesco: '',
+  // Paso 7
   haExtraviadoVisa: '',
   leHanNegadoVisa: '',
   haExtraviadoPasaporte: '',
@@ -190,6 +211,7 @@ export const useDS160Store = create<DS160Store>()(
       name: 'ds160-form-storage',
       partialize: (state) => ({
         formData: state.formData,
+        currentStep: state.currentStep,
         completedSteps: Array.from(state.completedSteps)
       }),
       onRehydrateStorage: () => (state) => {
