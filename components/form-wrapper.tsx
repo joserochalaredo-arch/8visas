@@ -1,10 +1,12 @@
 'use client'
 
 import { ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { useDS160Store } from '@/store/ds160-store'
 import { useFormStore } from '@/store/form-store'
+import { useAdminStore } from '@/store/admin-store'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, ArrowRight, Save, Shield } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Save, Shield, LogOut } from 'lucide-react'
 import { StepProgress } from '@/components/step-progress'
 import Image from 'next/image'
 
@@ -30,6 +32,7 @@ interface FormWrapperProps {
   onNext?: () => void
   onPrevious?: () => void
   onSave?: () => void
+  onBackToMenu?: () => void
   isValid?: boolean
   showSave?: boolean
 }
@@ -41,13 +44,21 @@ export function FormWrapper({
   onNext,
   onPrevious,
   onSave,
+  onBackToMenu,
   isValid = false,
   showSave = true
 }: FormWrapperProps) {
+  const router = useRouter()
+  const { adminLogout } = useAdminStore()
   const { currentStep, getTotalSteps, markStepCompleted, setCurrentStep } = useDS160Store()
   const totalSteps = getTotalSteps()
   const isFirstStep = currentStep === 1
   const isLastStep = currentStep === totalSteps
+
+  const handleLogout = () => {
+    adminLogout()
+    router.push('/')
+  }
 
   const handleNext = () => {
     if (isValid && currentStep < totalSteps) {
@@ -92,11 +103,22 @@ export function FormWrapper({
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm text-gray-500">
-                  Paso {currentStep} de {totalSteps}
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">
+                    Paso {currentStep} de {totalSteps}
+                  </div>
+                  <ClientDisplay />
                 </div>
-                <ClientDisplay />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="flex items-center text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Cerrar Sesión
+                </Button>
               </div>
             </div>
             <StepProgress />
@@ -124,6 +146,17 @@ export function FormWrapper({
           <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="flex space-x-3">
+                {onBackToMenu && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onBackToMenu}
+                    className="flex items-center bg-gray-200 hover:bg-gray-300"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Menú Principal
+                  </Button>
+                )}
                 {!isFirstStep && (
                   <Button
                     type="button"

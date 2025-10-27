@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { FormWrapper } from '@/components/form-wrapper'
 import { ClientInfoPanel } from '@/components/client-info-panel'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
 import { useState, useEffect, Suspense } from 'react'
 
@@ -44,6 +45,12 @@ function Step1Content() {
     },
     mode: 'onChange'
   })
+
+  // Registrar campos de Select para validación
+  useEffect(() => {
+    register('ciudadCita', { required: 'Debe seleccionar una ciudad para la cita consular' })
+    register('citaCAS', { required: 'Debe seleccionar una ciudad para la cita CAS' })
+  }, [register])
 
   const watchCiudadCita = watch('ciudadCita')
   const watchCitaCAS = watch('citaCAS')
@@ -118,6 +125,10 @@ function Step1Content() {
     alert('✅ Borrador guardado exitosamente')
   }
 
+  const handleBackToMenu = () => {
+    router.push('/admin/dashboard')
+  }
+
   return (
     <div>
       {/* Panel de información del cliente */}
@@ -128,6 +139,7 @@ function Step1Content() {
         description="Complete su información personal básica y seleccione la ciudad donde desea la cita"
         onNext={() => handleSubmit(onSubmit)()}
         onSave={onSave}
+        onBackToMenu={handleBackToMenu}
         isValid={isValid}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -138,119 +150,63 @@ function Step1Content() {
             Información de la Cita
           </h3>
           
-          <RadioGroup 
-            label="Ciudad en donde quiere la cita consular (marcar con X)"
-            error={errors.ciudadCita?.message}
-          >
-            <RadioOption
-              {...register('ciudadCita', { required: 'Debe seleccionar una ciudad' })}
-              value="TIJUANA"
-              label="Tijuana"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="NOGALES"
-              label="Nogales"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="CIUDAD_JUAREZ"
-              label="Ciudad Juárez"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="NUEVO_LAREDO"
-              label="Nuevo Laredo"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="MONTERREY"
-              label="Monterrey"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="MATAMOROS"
-              label="Matamoros"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="GUADALAJARA"
-              label="Guadalajara"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="HERMOSILLO"
-              label="Hermosillo"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="CIUDAD_DE_MEXICO"
-              label="Ciudad de México"
-            />
-            <RadioOption
-              {...register('ciudadCita')}
-              value="MERIDA"
-              label="Mérida"
-            />
-          </RadioGroup>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Ciudad en donde quiere la cita consular *
+            </label>
+            <Select
+              value={watchCiudadCita}
+              onValueChange={(value) => setValue('ciudadCita', value as any, { shouldValidate: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccione una ciudad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TIJUANA">Tijuana</SelectItem>
+                <SelectItem value="NOGALES">Nogales</SelectItem>
+                <SelectItem value="CIUDAD_JUAREZ">Ciudad Juárez</SelectItem>
+                <SelectItem value="NUEVO_LAREDO">Nuevo Laredo</SelectItem>
+                <SelectItem value="MONTERREY">Monterrey</SelectItem>
+                <SelectItem value="MATAMOROS">Matamoros</SelectItem>
+                <SelectItem value="GUADALAJARA">Guadalajara</SelectItem>
+                <SelectItem value="HERMOSILLO">Hermosillo</SelectItem>
+                <SelectItem value="CIUDAD_DE_MEXICO">Ciudad de México</SelectItem>
+                <SelectItem value="MERIDA">Mérida</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.ciudadCita && (
+              <p className="text-sm text-red-600">{errors.ciudadCita.message}</p>
+            )}
+          </div>
           
           {/* Pregunta sobre cita CAS */}
-          <div className="mt-6">
-            <RadioGroup 
-              label="Ciudad donde quiere la cita CAS (marcar con X)"
-              error={errors.citaCAS?.message}
+          <div className="mt-6 space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Ciudad donde quiere la cita CAS *
+            </label>
+            <Select
+              value={watchCitaCAS}
+              onValueChange={(value) => setValue('citaCAS', value as any, { shouldValidate: true })}
             >
-              <RadioOption
-                {...register('citaCAS', { required: 'Debe seleccionar una ciudad para CAS' })}
-                value="TIJUANA"
-                label="Tijuana"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="NOGALES"
-                label="Nogales"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="CIUDAD_JUAREZ"
-                label="Ciudad Juárez"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="NUEVO_LAREDO"
-                label="Nuevo Laredo"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="MONTERREY"
-                label="Monterrey"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="MATAMOROS"
-                label="Matamoros"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="GUADALAJARA"
-                label="Guadalajara"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="HERMOSILLO"
-                label="Hermosillo"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="CIUDAD_DE_MEXICO"
-                label="Ciudad de México"
-              />
-              <RadioOption
-                {...register('citaCAS')}
-                value="MERIDA"
-                label="Mérida"
-              />
-            </RadioGroup>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccione una ciudad para CAS" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TIJUANA">Tijuana</SelectItem>
+                <SelectItem value="NOGALES">Nogales</SelectItem>
+                <SelectItem value="CIUDAD_JUAREZ">Ciudad Juárez</SelectItem>
+                <SelectItem value="NUEVO_LAREDO">Nuevo Laredo</SelectItem>
+                <SelectItem value="MONTERREY">Monterrey</SelectItem>
+                <SelectItem value="MATAMOROS">Matamoros</SelectItem>
+                <SelectItem value="GUADALAJARA">Guadalajara</SelectItem>
+                <SelectItem value="HERMOSILLO">Hermosillo</SelectItem>
+                <SelectItem value="CIUDAD_DE_MEXICO">Ciudad de México</SelectItem>
+                <SelectItem value="MERIDA">Mérida</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.citaCAS && (
+              <p className="text-sm text-red-600">{errors.citaCAS.message}</p>
+            )}
           </div>
         </div>
 

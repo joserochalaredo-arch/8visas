@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAdminStore } from '@/store/admin-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PlusIcon, EyeIcon, TrashIcon, UserIcon, MailIcon, PhoneIcon, CalendarIcon, ActivityIcon, ArrowRightIcon, CheckCircleIcon, PlayIcon, PauseIcon, LogOutIcon } from 'lucide-react'
+import { PlusIcon, EyeIcon, TrashIcon, UserIcon, MailIcon, PhoneIcon, CalendarIcon, ActivityIcon, ArrowRightIcon, CheckCircleIcon, PlayIcon, PauseIcon, LogOutIcon, FileText } from 'lucide-react'
 import { PaymentStatusSelector } from '@/components/payment-status-selector'
 import { PDFGenerator } from '@/components/pdf-generator'
 import Image from 'next/image'
@@ -18,10 +18,58 @@ export default function AdminDashboard() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showWhoFillsModal, setShowWhoFillsModal] = useState(false)
   const [pendingClientData, setPendingClientData] = useState({ name: '', email: '', phone: '', comments: '' })
+  const [isClient, setIsClient] = useState(false)
   
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(5) // Mostrar 5 clientes por página
+  const itemsPerPage = 10
+  const [deleteConfirmations, setDeleteConfirmations] = useState<{[token: string]: number}>({})
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [generatedLink, setGeneratedLink] = useState('')
+  const [generatedClientName, setGeneratedClientName] = useState('')
+  
+  // Estados para modales de confirmación
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteModalData, setDeleteModalData] = useState({ token: '', clientName: '', step: 0 })
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  const handleDeleteWithConfirmation = (token: string, clientName: string) => {
+    const confirmCount = deleteConfirmations[token] || 0
+    setDeleteModalData({ token, clientName, step: confirmCount })
+    setShowDeleteModal(true)
+  }
+
+  const handleConfirmDelete = () => {
+    const { token, clientName, step } = deleteModalData
+    
+    if (step < 2) {
+      setDeleteConfirmations(prev => ({ ...prev, [token]: step + 1 }))
+      setDeleteModalData(prev => ({ ...prev, step: step + 1 }))
+    } else {
+      deleteClient(token)
+      setDeleteConfirmations(prev => {
+        const newState = { ...prev }
+        delete newState[token]
+        return newState
+      })
+      setShowDeleteModal(false)
+      setSuccessMessage(`Cliente "${clientName}" eliminado exitosamente`)
+      setShowSuccessModal(true)
+    }
+  }
+
+  // Reset confirmations after 30 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDeleteConfirmations({})
+    }, 30000)
+    return () => clearTimeout(timer)
+  }, [deleteConfirmations])
   
   const { 
     isAdminAuthenticated, 
@@ -88,8 +136,10 @@ export default function AdminDashboard() {
     setNewClientComments('')
     setPendingClientData({ name: '', email: '', phone: '', comments: '' })
     
-    // Mostrar el link al admin
-    alert(`Link generado para ${pendingClientData.name}:\n\n${clientLink}\n\nComparte este link con el cliente para que llene su formulario DS-160.`)
+    // Mostrar el link al admin en modal
+    setGeneratedLink(clientLink)
+    setGeneratedClientName(pendingClientData.name)
+    setShowLinkModal(true)
   }
 
   const handleLogout = () => {
@@ -127,14 +177,16 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {allClients.length} cliente{allClients.length !== 1 ? 's' : ''} total
-                {allClients.length > itemsPerPage && (
-                  <span className="text-gray-400 ml-2">
-                    (Mostrando {startIndex + 1}-{Math.min(endIndex, allClients.length)} de {allClients.length})
-                  </span>
-                )}
-              </span>
+              {isClient && (
+                <span className="text-sm text-gray-600">
+                  {allClients.length} cliente{allClients.length !== 1 ? 's' : ''} total
+                  {allClients.length > itemsPerPage && (
+                    <span className="text-gray-400 ml-2">
+                      (Mostrando {startIndex + 1}-{Math.min(endIndex, allClients.length)} de {allClients.length})
+                    </span>
+                  )}
+                </span>
+              )}
               <Button 
                 onClick={handleLogout}
                 variant="outline"
@@ -172,17 +224,15 @@ export default function AdminDashboard() {
                 />
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder="Email (opcional)"
                   value={newClientEmail}
                   onChange={(e) => setNewClientEmail(e.target.value)}
-                  required
                 />
                 <Input
                   type="tel"
-                  placeholder="Teléfono"
+                  placeholder="Teléfono (opcional)"
                   value={newClientPhone}
                   onChange={(e) => setNewClientPhone(e.target.value)}
-                  required
                 />
               </div>
               <div className="w-full">
@@ -208,7 +258,11 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-semibold text-gray-900">Clientes y Tokens</h2>
           </div>
           
-          {allClients.length === 0 ? (
+          {!isClient ? (
+            <div className="p-12 text-center">
+              <div className="animate-pulse">Cargando clientes...</div>
+            </div>
+          ) : allClients.length === 0 ? (
             <div className="p-12 text-center">
               <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No hay clientes registrados</h3>
@@ -216,8 +270,9 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="min-w-full overflow-x-auto" style={{ overflowY: 'visible' }}>
+                <div className="inline-block min-w-full">
+                  <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -340,6 +395,31 @@ export default function AdminDashboard() {
                                 onGenerated={() => console.log('PDF generado para', client.clientName)}
                               />
                             )}
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/admin/client/${client.token}`)}
+                              className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs px-2 py-1"
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              {client.formProgress > 0 ? 'Continuar' : 'Comenzar'}
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const clientLink = `${window.location.origin}/form/step-1?token=${client.token}`
+                                setGeneratedLink(clientLink)
+                                setGeneratedClientName(client.clientName)
+                                setShowLinkModal(true)
+                              }}
+                              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs px-2 py-1"
+                            >
+                              <EyeIcon className="h-3 w-3 mr-1" />
+                              Ver Link
+                            </Button>
                           </div>
                           
                           <div className="flex space-x-1">
@@ -368,11 +448,20 @@ export default function AdminDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => deleteClient(client.token)}
-                              className="text-red-600 border-red-200 hover:bg-red-50 text-xs px-2 py-1"
+                              onClick={() => handleDeleteWithConfirmation(client.token, client.clientName)}
+                              className={`text-xs px-2 py-1 ${
+                                (deleteConfirmations[client.token] || 0) > 0
+                                  ? "text-red-800 border-red-500 bg-red-100 hover:bg-red-200"
+                                  : "text-red-600 border-red-200 hover:bg-red-50"
+                              }`}
                             >
                               <TrashIcon className="h-3 w-3 mr-1" />
-                              Eliminar
+                              {deleteConfirmations[client.token] === 1 
+                                ? "Confirmar (2/3)" 
+                                : deleteConfirmations[client.token] === 2 
+                                  ? "¡ELIMINAR! (3/3)" 
+                                  : "Eliminar"
+                              }
                             </Button>
                           </div>
                         </div>
@@ -380,11 +469,12 @@ export default function AdminDashboard() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+                  </table>
+                </div>
+              </div>
             
             {/* Controles de paginación */}
-            {allClients.length > itemsPerPage && (
+            {isClient && allClients.length > itemsPerPage && (
               <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
                 <div className="flex items-center text-sm text-gray-700">
                   Página {currentPage} de {totalPages}
@@ -523,6 +613,180 @@ export default function AdminDashboard() {
                 </svg>
                 <span>Regresar al formulario</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para mostrar link generado */}
+      {showLinkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">¡Link Generado Exitosamente!</h2>
+              <button 
+                onClick={() => setShowLinkModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center mb-2">
+                  <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
+                  <span className="font-semibold text-green-800">
+                    Link generado para: {generatedClientName}
+                  </span>
+                </div>
+                <p className="text-green-700 text-sm">
+                  Comparta este enlace con el cliente para que complete su formulario DS-160
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Enlace del Cliente:
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={generatedLink}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-mono"
+                  />
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedLink)
+                      setSuccessMessage('¡Enlace copiado al portapapeles!')
+                      setShowSuccessModal(true)
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
+                  >
+                    Copiar
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-4 border-t">
+                <Button
+                  onClick={() => {
+                    const message = `Hola ${generatedClientName}, tienes que completar tu formulario DS-160 para tu visa americana. Usa este enlace: ${generatedLink}`
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
+                    window.open(whatsappUrl, '_blank')
+                  }}
+                  className="bg-green-500 hover:bg-green-600 text-white flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.787"/>
+                  </svg>
+                  Enviar por WhatsApp
+                </Button>
+                
+                <Button
+                  onClick={() => setShowLinkModal(false)}
+                  variant="outline"
+                  className="px-6 py-2"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                <TrashIcon className="h-6 w-6 text-red-600" />
+              </div>
+              
+              <h3 className="text-lg font-medium text-center text-gray-900 mb-4">
+                {deleteModalData.step === 0 && "Confirmar Eliminación"}
+                {deleteModalData.step === 1 && "SEGUNDA CONFIRMACIÓN"}
+                {deleteModalData.step === 2 && "CONFIRMACIÓN FINAL"}
+              </h3>
+              
+              <div className="text-sm text-gray-600 text-center mb-6">
+                {deleteModalData.step === 0 && (
+                  <div>
+                    <p>¿Está seguro que desea eliminar al cliente <strong>"{deleteModalData.clientName}"</strong>?</p>
+                    <p className="mt-2 text-red-600">Esta acción NO se puede deshacer.</p>
+                    <p className="mt-2">Haga clic en "Eliminar" nuevamente para continuar.</p>
+                  </div>
+                )}
+                {deleteModalData.step === 1 && (
+                  <div>
+                    <p className="font-semibold text-red-700">SEGUNDA CONFIRMACIÓN</p>
+                    <p className="mt-2">¿Realmente desea eliminar PERMANENTEMENTE al cliente <strong>"{deleteModalData.clientName}"</strong>?</p>
+                    <p className="mt-2 text-red-600">Todos sus datos se perderán.</p>
+                    <p className="mt-2">Haga clic en "Eliminar" una vez más para confirmar.</p>
+                  </div>
+                )}
+                {deleteModalData.step === 2 && (
+                  <div>
+                    <p className="font-bold text-red-800">⚠️ CONFIRMACIÓN FINAL ⚠️</p>
+                    <p className="mt-2">Esta es la ÚLTIMA confirmación.</p>
+                    <p className="mt-2">¿Desea eliminar DEFINITIVAMENTE al cliente <strong>"{deleteModalData.clientName}"</strong>?</p>
+                    <p className="mt-2 font-bold text-red-700">ESTA ACCIÓN NO SE PUEDE DESHACER</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex space-x-3 justify-center">
+                <Button
+                  onClick={() => setShowDeleteModal(false)}
+                  variant="outline"
+                  className="px-6 py-2"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmDelete}
+                  className={`px-6 py-2 text-white ${
+                    deleteModalData.step === 2 
+                      ? 'bg-red-700 hover:bg-red-800' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  {deleteModalData.step === 2 ? 'ELIMINAR DEFINITIVAMENTE' : 'Eliminar'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Éxito */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-sm w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-green-100 rounded-full mb-4">
+                <CheckCircleIcon className="h-6 w-6 text-green-600" />
+              </div>
+              
+              <h3 className="text-lg font-medium text-center text-gray-900 mb-4">
+                ¡Éxito!
+              </h3>
+              
+              <p className="text-sm text-gray-600 text-center mb-6">
+                {successMessage}
+              </p>
+              
+              <div className="flex justify-center">
+                <Button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
+                >
+                  Aceptar
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -61,6 +61,11 @@ export default function HomePage() {
       icon: Shield,
       title: 'Asesoría Personalizada',
       description: 'Personal capacitado y experimentado dispuesto a apoyarle'
+    },
+    {
+      icon: Zap,
+      title: 'Trámite SENTRI (Global Entry)',
+      description: 'Gestión completa para el programa SENTRI de cruce rápido fronterizo'
     }
   ]
 
@@ -178,15 +183,6 @@ export default function HomePage() {
                 Contáctanos Sin Compromiso
               </Button>
               
-              {isAuthenticated && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={logout}
-                >
-                  Cerrar Sesión
-                </Button>
-              )}
             </div>
           </div>
         </div>
@@ -427,6 +423,7 @@ export default function HomePage() {
                 <div>✓ Asesoría especializada</div>
                 <div>✓ Seguimiento de citas</div>
                 <div>✓ Preparación entrevista</div>
+                <div>✓ Trámite SENTRI</div>
               </div>
             </div>
             
