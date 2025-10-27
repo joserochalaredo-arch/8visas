@@ -245,7 +245,7 @@ export default function Step5() {
                 <li>• Si es estudiante y no trabaja, proporcione información de empleos anteriores o trabajos de medio tiempo</li>
                 <li>• Si tiene negocio propio, usted es tanto la empresa como el patrón</li>
                 <li>• Si está jubilado(a), proporcione información de su último empleo</li>
-                <li>• Si nunca ha trabajado, puede indicar "NUNCA HE TRABAJADO" en el campo de empresa</li>
+                <li>• Si nunca ha trabajado, puede indicar &quot;NUNCA HE TRABAJADO&quot; en el campo de empresa</li>
                 <li>• Los salarios deben ser aproximados, no necesitan ser exactos</li>
               </ul>
             </div>

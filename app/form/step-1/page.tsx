@@ -9,7 +9,7 @@ import { FormWrapper } from '@/components/form-wrapper'
 import { ClientInfoPanel } from '@/components/client-info-panel'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 
 interface Step1FormData {
   ciudadCita: 'TIJUANA' | 'NOGALES' | 'CIUDAD_JUAREZ' | 'NUEVO_LAREDO' | 'MONTERREY' | 'MATAMOROS' | 'GUADALAJARA' | 'HERMOSILLO' | 'CIUDAD_DE_MEXICO' | 'MERIDA' | ''
@@ -23,7 +23,7 @@ interface Step1FormData {
   especificarNacionalidad?: string
 }
 
-export default function Step1() {
+function Step1Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { formData, updateFormData, setCurrentStep } = useDS160Store()
@@ -338,5 +338,13 @@ export default function Step1() {
         </form>
       </FormWrapper>
     </div>
+  )
+}
+
+export default function Step1() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <Step1Content />
+    </Suspense>
   )
 }

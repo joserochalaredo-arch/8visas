@@ -102,7 +102,7 @@ export async function getClients(
 
     return {
       data: {
-        data: data || [],
+        data: (data as any) || [],
         count: count || 0,
         page,
         limit,

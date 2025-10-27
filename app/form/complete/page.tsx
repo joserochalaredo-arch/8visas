@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useAuthStore } from '@/store/auth-store'
 import { useDS160Store } from '@/store/ds160-store'
 import { ClientInfoPanel } from '@/components/client-info-panel'
@@ -44,9 +45,11 @@ export default function FormFinalStep() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center">
-              <img 
-                src="/LOGOSOLO.png" 
+              <Image 
+                src="/images/LOGOSOLO.png" 
                 alt="A8Visas Logo" 
+                width={32}
+                height={32}
                 className="h-8 w-8 mr-3"
               />
               <div>

@@ -59,7 +59,7 @@ export default function PrivacyPolicyPage() {
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">I. Identidad y domicilio del responsable</h2>
             <p className="mb-6">
-              A8Visas (en adelante, "el Responsable"), empresa dedicada a servicios de asesoría y gestión de trámites de visa, con sede en México, es el responsable del tratamiento, uso y protección de sus datos personales.
+              A8Visas (en adelante, &quot;el Responsable&quot;), empresa dedicada a servicios de asesoría y gestión de trámites de visa, con sede en México, es el responsable del tratamiento, uso y protección de sus datos personales.
             </p>
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">II. Finalidades del tratamiento</h2>

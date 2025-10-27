@@ -173,7 +173,7 @@ export function FormCompletion({ onComplete }: FormCompletionProps) {
         {/* Mensaje informativo */}
         <div className="bg-blue-100 border border-blue-200 rounded-lg p-4 mb-6">
           <p className="text-blue-800 text-sm">
-            <strong>Siguiente paso:</strong> Haga clic en "Marcar como Completado" para finalizar oficialmente el proceso 
+            <strong>Siguiente paso:</strong> Haga clic en &quot;Marcar como Completado&quot; para finalizar oficialmente el proceso 
             y generar los documentos correspondientes.
           </p>
         </div>

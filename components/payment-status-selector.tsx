@@ -73,7 +73,7 @@ export function PaymentStatusSelector({
       ) : (
         // Modo editable
         <>
-          <Select value={currentStatus} onValueChange={onStatusChange}>
+          <Select value={currentStatus} onValueChange={(value) => onStatusChange(value as any)}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Estado de pago">
                 <div className="flex items-center space-x-2">

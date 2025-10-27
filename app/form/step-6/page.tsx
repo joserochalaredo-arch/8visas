@@ -267,7 +267,7 @@ export default function Step6() {
                 <li>• Si alguno de sus padres ha fallecido, puede indicarlo en el campo del nombre</li>
                 <li>• Las fechas pueden ser aproximadas si no recuerda la fecha exacta</li>
                 <li>• Para matrimonios anteriores, proporcione toda la información disponible</li>
-                <li>• Si no conoce la dirección actual de un ex-cónyuge, indique "DESCONOZCO"</li>
+                <li>• Si no conoce la dirección actual de un ex-cónyuge, indique &quot;DESCONOZCO&quot;</li>
               </ul>
             </div>
           </div>
