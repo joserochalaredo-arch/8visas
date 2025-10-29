@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAdminSupabase } from '@/hooks/use-admin-supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PlusIcon, EyeIcon, TrashIcon, UserIcon, MailIcon, PhoneIcon, CalendarIcon, ActivityIcon, ArrowRightIcon, CheckCircleIcon, PlayIcon, PauseIcon, LogOutIcon, FileText } from 'lucide-react'
+import { PlusIcon, EyeIcon, TrashIcon, UserIcon, MailIcon, PhoneIcon, CalendarIcon, ActivityIcon, ArrowRightIcon, CheckCircleIcon, PlayIcon, PauseIcon, LogOutIcon, FileText, MessageSquare, Users, ChevronDown, ChevronRight } from 'lucide-react'
 import { PaymentStatusSelector } from '@/components/payment-status-selector'
 import { PDFGenerator } from '@/components/pdf-generator'
 import { useNotificationModal } from '@/components/notification-modal'
+import FamilyManagementModal from '@/components/family-management-modal'
 import Image from 'next/image'
 
 export default function AdminDashboard() {
@@ -34,6 +35,18 @@ export default function AdminDashboard() {
   const [deleteModalData, setDeleteModalData] = useState({ token: '', clientName: '', step: 0 })
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  
+  // Estados para modal de comentarios
+  const [showCommentsModal, setShowCommentsModal] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<any>(null)
+  const [newComment, setNewComment] = useState('')
+  
+  // Estados para modal de familia
+  const [showFamilyModal, setShowFamilyModal] = useState(false)
+  const [familyClient, setFamilyClient] = useState<{ name: string; token: string } | null>(null)
+  
+  // Estado para controlar qué familias están expandidas
+  const [expandedFamilies, setExpandedFamilies] = useState<Set<string>>(new Set())
 
   // Hook de notificaciones
   const { 
@@ -94,6 +107,13 @@ export default function AdminDashboard() {
     deleteClient,
     updatePaymentStatus,
     markFormAsCompleted,
+    addClientComment,
+    getClientComments,
+    createFamilyGroup,
+    getFamilyMembers,
+    addClientToFamily,
+    createFamilyMemberRecord,
+    loadClients,
     clients,
     loading
   } = useAdminSupabase()
@@ -101,11 +121,81 @@ export default function AdminDashboard() {
   const router = useRouter()
   const allClients = getAllClients()
 
+  // Colores para familias (evitando colores consecutivos iguales)
+  const familyColors = [
+    'border-blue-200 bg-blue-50/30',
+    'border-green-200 bg-green-50/30', 
+    'border-purple-200 bg-purple-50/30',
+    'border-orange-200 bg-orange-50/30',
+    'border-pink-200 bg-pink-50/30',
+    'border-indigo-200 bg-indigo-50/30',
+    'border-yellow-200 bg-yellow-50/30',
+    'border-red-200 bg-red-50/30'
+  ]
+
+  // Función para organizar clientes por familias
+  const organizeClientsByFamily = (clients: any[]) => {
+    const organizedClients = []
+    const processedFamilies = new Set()
+    const familyColorMap = new Map()
+    let colorIndex = 0
+    
+    for (const client of clients) {
+      // Si el cliente es parte de una familia y no hemos procesado esta familia
+      if (client.family_group_id && !processedFamilies.has(client.family_group_id)) {
+        processedFamilies.add(client.family_group_id)
+        
+        // Asignar color único a esta familia
+        familyColorMap.set(client.family_group_id, familyColors[colorIndex % familyColors.length])
+        colorIndex++
+        
+        // Encontrar todos los miembros de esta familia
+        const familyMembers = clients.filter(c => c.family_group_id === client.family_group_id)
+        
+        // Ordenar los miembros: principal primero, luego el resto
+        familyMembers.sort((a, b) => {
+          if (a.family_role === 'main') return -1
+          if (b.family_role === 'main') return 1
+          return 0
+        })
+        
+        // Siempre agregar el cliente principal
+        const mainClient = familyMembers.find(m => m.family_role === 'main')
+        if (mainClient) {
+          organizedClients.push({
+            ...mainClient,
+            _familyMembers: familyMembers.filter(m => m.family_role !== 'main'),
+            _isFamilyMain: true,
+            _familyColor: familyColorMap.get(client.family_group_id)
+          })
+        }
+        
+        // Si la familia está expandida, agregar los demás miembros
+        if (expandedFamilies.has(client.family_group_id)) {
+          const otherMembers = familyMembers.filter(m => m.family_role !== 'main')
+          organizedClients.push(...otherMembers.map(member => ({
+            ...member,
+            _isFamilyMember: true,
+            _familyColor: familyColorMap.get(client.family_group_id)
+          })))
+        }
+      } 
+      // Si el cliente no es parte de una familia, agregarlo directamente
+      else if (!client.family_group_id) {
+        organizedClients.push(client)
+      }
+    }
+    
+    return organizedClients
+  }
+
+  const organizedClients = organizeClientsByFamily(allClients)
+
   // Lógica de paginación
-  const totalPages = Math.ceil(allClients.length / itemsPerPage)
+  const totalPages = Math.ceil(organizedClients.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedClients = allClients.slice(startIndex, endIndex)
+  const paginatedClients = organizedClients.slice(startIndex, endIndex)
 
   // Verificar autenticación del admin
   useEffect(() => {
@@ -156,14 +246,21 @@ export default function AdminDashboard() {
       // El admin llenará el formulario - generar token y abrir formulario
       const token = await generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
       setShowWhoFillsModal(false)
+      
+      // Preguntar por familiares antes de redirigir
+      showFamilyModalForClient(pendingClientData.name, token)
+      
       // Limpiar formulario
       setNewClientName('')
       setNewClientEmail('')
       setNewClientPhone('')
       setNewClientComments('')
       setPendingClientData({ name: '', email: '', phone: '', comments: '' })
-      // Redirigir al formulario con el token
-      router.push(`/form/single-page?token=${token}`)
+      
+      // Redirigir al formulario con el token después de un delay
+      setTimeout(() => {
+        router.push(`/form/single-page?token=${token}`)
+      }, 1000)
     } catch (error) {
       console.error('Error generando token:', error)
       showError(
@@ -202,23 +299,148 @@ export default function AdminDashboard() {
       const clientLink = `${window.location.origin}/form/single-page?token=${token}`
       
       setShowWhoFillsModal(false)
+      
+      // Mostrar el link al admin en modal
+      setGeneratedLink(clientLink)
+      setGeneratedClientName(pendingClientData.name)
+      setShowLinkModal(true)
+
+      // Después de mostrar el link, preguntar por familiares
+      setTimeout(() => {
+        showFamilyModalForClient(pendingClientData.name, token)
+      }, 500)
+      
       // Limpiar formulario
       setNewClientName('')
       setNewClientEmail('')
       setNewClientPhone('')
       setNewClientComments('')
       setPendingClientData({ name: '', email: '', phone: '', comments: '' })
-      
-      // Mostrar el link al admin en modal
-      setGeneratedLink(clientLink)
-      setGeneratedClientName(pendingClientData.name)
-      setShowLinkModal(true)
     } catch (error) {
       console.error('Error generando token:', error)
       showError(
         'Error al generar token para cliente',
         'No se pudo generar el token para que el cliente llene el formulario. Verifique su conexión e inténtalo de nuevo.'
       )
+    }
+  }
+
+  // Función para abrir modal de comentarios
+  const handleOpenCommentsModal = async (client: any) => {
+    setSelectedClient(client)
+    setShowCommentsModal(true)
+    // Cargar comentarios existentes
+    try {
+      const comments = await getClientComments(client.token)
+      console.log('Comentarios cargados:', comments)
+    } catch (error) {
+      console.error('Error cargando comentarios:', error)
+    }
+  }
+
+  // Función para agregar comentario
+  const handleAddComment = async () => {
+    if (!selectedClient || !newComment.trim()) return
+
+    try {
+      await addClientComment(selectedClient.token, newComment.trim())
+      setNewComment('')
+      showSuccess(
+        '✅ Comentario agregado',
+        `Se agregó el comentario al caso de ${selectedClient.clientName}`
+      )
+    } catch (error) {
+      console.error('Error agregando comentario:', error)
+      showError(
+        'Error al agregar comentario',
+        'No se pudo agregar el comentario. Inténtalo de nuevo.'
+      )
+    }
+  }
+
+  // Función para mostrar modal de familia después de crear cliente
+  const showFamilyModalForClient = (clientName: string, clientToken: string) => {
+    setFamilyClient({ name: clientName, token: clientToken })
+    setShowFamilyModal(true)
+  }
+
+  // Función para expandir/contraer familias
+  const toggleFamilyExpansion = (familyGroupId: string) => {
+    const newExpanded = new Set(expandedFamilies)
+    if (newExpanded.has(familyGroupId)) {
+      newExpanded.delete(familyGroupId)
+    } else {
+      newExpanded.add(familyGroupId)
+    }
+    setExpandedFamilies(newExpanded)
+  }
+
+  // Función para crear familia
+  const handleCreateFamily = async (familyName: string, members: Array<{ name: string; role: 'spouse' | 'child' | 'parent' | 'other' }>) => {
+    console.log('🏠 Iniciando creación de familia:', familyName, 'con', members.length, 'miembros')
+    
+    try {
+      // Validar que tenemos un cliente principal
+      if (!familyClient) {
+        throw new Error('No hay cliente principal seleccionado')
+      }
+
+      // Crear ID único para la familia
+      const familyGroupId = createFamilyGroup(familyName)
+      console.log('🆔 ID de familia generado:', familyGroupId)
+      
+      // Actualizar el cliente principal con información de familia
+      console.log('👤 Actualizando cliente principal:', familyClient.name, 'con token:', familyClient.token)
+      await addClientToFamily(familyClient.token, familyGroupId, 'main', familyName)
+      console.log('✅ Cliente principal actualizado con info familiar')
+
+      // Crear formularios DS-160 independientes para cada familiar
+      console.log('👨‍👩‍👧‍👦 Creando formularios DS-160 independientes para', members.length, 'familiares...')
+      
+      const createdFamilyMembers = []
+      
+      for (let i = 0; i < members.length; i++) {
+        const member = members[i]
+        console.log(`📝 Creando formulario DS-160 para familiar ${i + 1}:`, member.name, `(${member.role})`)
+        
+        try {
+          // Crear formulario DS-160 independiente con token único
+          const memberToken = await createFamilyMemberRecord(familyGroupId, familyName, member.name, member.role)
+          
+          createdFamilyMembers.push({
+            name: member.name,
+            role: member.role,
+            token: memberToken
+          })
+          
+          console.log(`✅ Formulario DS-160 creado para: ${member.name} con token: ${memberToken}`)
+        } catch (memberError) {
+          console.error(`❌ Error creando formulario DS-160 para ${member.name}:`, memberError)
+          throw new Error(`No se pudo crear el formulario para ${member.name}: ${memberError}`)
+        }
+      }
+
+      console.log('🔄 Recargando lista de clientes...')
+      // Recargar la lista de clientes para mostrar los nuevos miembros
+      await loadClients()
+      
+      console.log('🎉 Familia creada exitosamente:', familyName)
+      showSuccess(
+        '✅ Familia creada exitosamente',
+        `Se creó el grupo familiar "${familyName}" con ${members.length} formulario(s) DS-160 independiente(s). Cada familiar tiene su propio token único.`
+      )
+      
+      // Retornar los miembros creados con sus tokens
+      return createdFamilyMembers
+      
+    } catch (error) {
+      console.error('💥 Error creando familia:', error)
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el grupo familiar. Inténtalo de nuevo.'
+      showError(
+        'Error al crear familia',
+        errorMessage
+      )
+      throw error // Re-lanzar el error para que el modal lo maneje
     }
   }
 
@@ -229,17 +451,23 @@ export default function AdminDashboard() {
       const clientLink = `${window.location.origin}/form/single-page?token=${token}`
       
       setShowWhoFillsModal(false)
+      
+      // Mostrar el link al admin en modal
+      setGeneratedLink(clientLink)
+      setGeneratedClientName(pendingClientData.name)
+      setShowLinkModal(true)
+
+      // Después de mostrar el link, preguntar por familiares
+      setTimeout(() => {
+        showFamilyModalForClient(pendingClientData.name, token)
+      }, 500)
+      
       // Limpiar formulario
       setNewClientName('')
       setNewClientEmail('')
       setNewClientPhone('')
       setNewClientComments('')
       setPendingClientData({ name: '', email: '', phone: '', comments: '' })
-      
-      // Mostrar el link al admin en modal
-      setGeneratedLink(clientLink)
-      setGeneratedClientName(pendingClientData.name)
-      setShowLinkModal(true)
     } catch (error) {
       console.error('Error generando token:', error)
       showError(
@@ -362,7 +590,7 @@ export default function AdminDashboard() {
         {/* Lista de clientes */}
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">Clientes y Tokens</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Clientes</h2>
           </div>
           
           {!isClient || loading ? (
@@ -406,29 +634,163 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedClients.map((client) => (
-                    <tr key={client.token} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="flex items-center">
-                            <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm font-medium text-gray-900">
-                              {client.clientName}
-                            </span>
-                          </div>
-                          <div className="flex items-center mt-1">
-                            <MailIcon className="h-3 w-3 text-gray-400 mr-1" />
-                            <span className="text-xs text-gray-600 truncate max-w-[120px]">{client.clientEmail}</span>
-                          </div>
-                          {client.client_phone && (
-                            <div className="flex items-center mt-1">
-                              <PhoneIcon className="h-3 w-3 text-gray-400 mr-1" />
-                              <span className="text-xs text-gray-600">{client.client_phone}</span>
+                  {paginatedClients.map((client, index) => {
+                    const isMainFamilyMember = client._isFamilyMain || client.family_role === 'main'
+                    const isFamilyMember = client._isFamilyMember || (client.family_group_id && client.family_role !== 'main')
+                    const showFamilyHeader = isMainFamilyMember && index === 0 || 
+                      (isMainFamilyMember && paginatedClients[index - 1]?.family_group_id !== client.family_group_id)
+                    const isExpanded = client.family_group_id ? expandedFamilies.has(client.family_group_id) : false
+                    const familyMembersCount = client._familyMembers ? client._familyMembers.length : 0
+                    
+                    return (
+                      <React.Fragment key={client.token}>
+                        {/* Header de familia solo para el cliente principal */}
+                        {showFamilyHeader && client.family_group_name && (
+                          <tr className={`${client._familyColor || 'bg-blue-50'} border-l-4 ${client._familyColor?.split(' ')[0]?.replace('border-', 'border-') || 'border-blue-400'}`}>
+                            <td colSpan={6} className="px-4 py-2">
+                              <div className="flex items-center">
+                                <Users className="h-4 w-4 mr-2" style={{color: client._familyColor?.includes('blue') ? '#2563eb' : 
+                                  client._familyColor?.includes('green') ? '#059669' :
+                                  client._familyColor?.includes('purple') ? '#7c3aed' :
+                                  client._familyColor?.includes('orange') ? '#ea580c' :
+                                  client._familyColor?.includes('pink') ? '#db2777' :
+                                  client._familyColor?.includes('indigo') ? '#4f46e5' :
+                                  client._familyColor?.includes('yellow') ? '#d97706' :
+                                  client._familyColor?.includes('red') ? '#dc2626' : '#2563eb'}} />
+                                <span className="text-sm font-semibold" style={{color: client._familyColor?.includes('blue') ? '#1e3a8a' : 
+                                  client._familyColor?.includes('green') ? '#064e3b' :
+                                  client._familyColor?.includes('purple') ? '#581c87' :
+                                  client._familyColor?.includes('orange') ? '#9a3412' :
+                                  client._familyColor?.includes('pink') ? '#831843' :
+                                  client._familyColor?.includes('indigo') ? '#312e81' :
+                                  client._familyColor?.includes('yellow') ? '#92400e' :
+                                  client._familyColor?.includes('red') ? '#991b1b' : '#1e3a8a'}}>
+                                  {client.family_group_name}
+                                </span>
+                                <span className="ml-2 text-xs px-2 py-1 rounded-full" style={{
+                                  color: client._familyColor?.includes('blue') ? '#2563eb' : 
+                                    client._familyColor?.includes('green') ? '#059669' :
+                                    client._familyColor?.includes('purple') ? '#7c3aed' :
+                                    client._familyColor?.includes('orange') ? '#ea580c' :
+                                    client._familyColor?.includes('pink') ? '#db2777' :
+                                    client._familyColor?.includes('indigo') ? '#4f46e5' :
+                                    client._familyColor?.includes('yellow') ? '#d97706' :
+                                    client._familyColor?.includes('red') ? '#dc2626' : '#2563eb',
+                                  backgroundColor: client._familyColor?.includes('blue') ? '#dbeafe' : 
+                                    client._familyColor?.includes('green') ? '#d1fae5' :
+                                    client._familyColor?.includes('purple') ? '#e9d5ff' :
+                                    client._familyColor?.includes('orange') ? '#fed7aa' :
+                                    client._familyColor?.includes('pink') ? '#fce7f3' :
+                                    client._familyColor?.includes('indigo') ? '#e0e7ff' :
+                                    client._familyColor?.includes('yellow') ? '#fef3c7' :
+                                    client._familyColor?.includes('red') ? '#fecaca' : '#dbeafe'
+                                }}>
+                                  Grupo Familiar
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        
+                        <tr className={`hover:bg-gray-50 transition-colors duration-200 border-b-2 border-gray-100 
+                          ${isFamilyMember && !isMainFamilyMember ? `${client._familyColor || 'bg-gray-50/70'} border-l-4 ${client._familyColor?.split(' ')[0] || 'border-gray-300'}` : ''} 
+                          ${client.formProgress === 0 && client.family_role && client.family_role !== 'main' ? 'opacity-80' : ''} 
+                          ${isMainFamilyMember && familyMembersCount > 0 ? `border-l-4 ${client._familyColor?.split(' ')[0] || 'border-blue-200'}` : ''}
+                          ${index > 0 ? 'border-t-4 border-gray-50' : ''}
+                          ${client._familyColor && !isFamilyMember && !isMainFamilyMember ? client._familyColor.split(' ')[1] || '' : ''}`}>
+                          <td className="px-4 py-6 whitespace-nowrap">
+                            <div>
+                              <div className="flex items-center">
+                                {/* Botón de expandir/contraer para clientes principales con familia */}
+                                {isMainFamilyMember && familyMembersCount > 0 && (
+                                  <button
+                                    onClick={() => toggleFamilyExpansion(client.family_group_id)}
+                                    className="flex items-center justify-center w-5 h-5 mr-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200 hover:scale-110"
+                                    title={isExpanded ? `Contraer familia (${familyMembersCount} miembros)` : `Expandir familia (${familyMembersCount} miembros)`}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-3 w-3 transition-transform duration-200" />
+                                    ) : (
+                                      <ChevronRight className="h-3 w-3 transition-transform duration-200" />
+                                    )}
+                                  </button>
+                                )}
+                                
+                                {/* Indicador para miembros de familia (no principales) */}
+                                {isFamilyMember && !isMainFamilyMember && (
+                                  <div className="w-5 mr-2 flex justify-center">
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                  </div>
+                                )}
+                                
+                                {/* Espaciador para clientes sin familia */}
+                                {!isMainFamilyMember && !isFamilyMember && familyMembersCount === 0 && (
+                                  <div className="w-5 mr-2"></div>
+                                )}
+
+                                <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
+                                <div className="flex flex-col">
+                                  <div className="flex items-center">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {client.clientName}
+                                    </span>
+                                    {/* Contador de familiares para cliente principal */}
+                                    {isMainFamilyMember && familyMembersCount > 0 && (
+                                      <span className="ml-2 text-xs px-2 py-1 rounded-full" style={{
+                                        color: client._familyColor?.includes('blue') ? '#2563eb' : 
+                                          client._familyColor?.includes('green') ? '#059669' :
+                                          client._familyColor?.includes('purple') ? '#7c3aed' :
+                                          client._familyColor?.includes('orange') ? '#ea580c' :
+                                          client._familyColor?.includes('pink') ? '#db2777' :
+                                          client._familyColor?.includes('indigo') ? '#4f46e5' :
+                                          client._familyColor?.includes('yellow') ? '#d97706' :
+                                          client._familyColor?.includes('red') ? '#dc2626' : '#2563eb',
+                                        backgroundColor: client._familyColor?.includes('blue') ? '#dbeafe' : 
+                                          client._familyColor?.includes('green') ? '#d1fae5' :
+                                          client._familyColor?.includes('purple') ? '#e9d5ff' :
+                                          client._familyColor?.includes('orange') ? '#fed7aa' :
+                                          client._familyColor?.includes('pink') ? '#fce7f3' :
+                                          client._familyColor?.includes('indigo') ? '#e0e7ff' :
+                                          client._familyColor?.includes('yellow') ? '#fef3c7' :
+                                          client._familyColor?.includes('red') ? '#fecaca' : '#dbeafe',
+                                        borderColor: client._familyColor?.includes('blue') ? '#93c5fd' : 
+                                          client._familyColor?.includes('green') ? '#6ee7b7' :
+                                          client._familyColor?.includes('purple') ? '#c4b5fd' :
+                                          client._familyColor?.includes('orange') ? '#fdba74' :
+                                          client._familyColor?.includes('pink') ? '#f9a8d4' :
+                                          client._familyColor?.includes('indigo') ? '#a5b4fc' :
+                                          client._familyColor?.includes('yellow') ? '#fde68a' :
+                                          client._familyColor?.includes('red') ? '#fca5a5' : '#93c5fd',
+                                        border: '1px solid'
+                                      }}>
+                                        👨‍👩‍👧‍👦 {familyMembersCount} {familyMembersCount === 1 ? 'familiar' : 'familiares'}
+                                        {!isExpanded && <span className="ml-1" style={{opacity: 0.7}}>→</span>}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {client.family_role && client.family_role !== 'main' && (
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full inline-block mt-1 w-fit">
+                                      {client.family_role === 'spouse' && '👥 Cónyuge'}
+                                      {client.family_role === 'child' && '👶 Hijo/a'}
+                                      {client.family_role === 'parent' && '👨‍👩‍👧‍👦 Padre/Madre'}
+                                      {client.family_role === 'other' && '👤 Familiar'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center mt-1">
+                                <MailIcon className="h-3 w-3 text-gray-400 mr-1" />
+                                <span className="text-xs text-gray-600 truncate max-w-[120px]">{client.clientEmail}</span>
+                              </div>
+                              {client.client_phone && (
+                                <div className="flex items-center mt-1">
+                                  <PhoneIcon className="h-3 w-3 text-gray-400 mr-1" />
+                                  <span className="text-xs text-gray-600">{client.client_phone}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                          </td>
+                      <td className="px-4 py-6 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <div className="w-16 bg-gray-200 rounded-full h-2">
                             <div 
@@ -441,7 +803,7 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-6 whitespace-nowrap">
                         <PaymentStatusSelector
                           currentStatus={client.payment_status as 'pending' | 'paid' | 'partial' | 'cancelled' || 'pending'}
                           onStatusChange={(status) => {
@@ -450,7 +812,7 @@ export default function AdminDashboard() {
                           }}
                         />
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-6 whitespace-nowrap">
                         {client.formProgress >= 100 ? (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                             <CheckCircleIcon className="h-3 w-3 mr-1" />
@@ -462,7 +824,7 @@ export default function AdminDashboard() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-6 whitespace-nowrap">
                         <div className="flex items-center">
                           <ActivityIcon className="h-3 w-3 text-gray-400 mr-1" />
                           <span className="text-xs text-gray-600">
@@ -470,131 +832,130 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex flex-col space-y-1">
-                          <div className="flex flex-wrap gap-1">
-                            {/* Botón Llenar Formulario DS-160 */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                console.log('Navegando al formulario DS-160 para:', client.clientName, 'Token:', client.token)
-                                router.push(`/form/single-page?token=${client.token}`)
-                              }}
-                              className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2 py-1"
-                            >
-                              <FileText className="h-3 w-3 mr-1" />
-                              {client.formProgress > 0 ? 'Continuar DS-160' : 'Comenzar DS-160'}
-                            </Button>
+                      <td className="px-4 py-6 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-2">
+                          {/* Botón Formulario DS-160 - Solo ícono */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              router.push(`/form/single-page?token=${client.token}`)
+                            }}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50 p-2"
+                            title={client.formProgress > 0 
+                              ? `Continuar DS-160 - Progreso: ${client.formProgress}%` 
+                              : 'Comenzar formulario DS-160 desde cero'
+                            }
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
 
-                            {/* Botón Ver Link - Generar y mostrar link para cliente */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                console.log('Generando link para cliente:', client.clientName)
-                                const clientLink = `${window.location.origin}/form/single-page?token=${client.token}`
-                                setGeneratedLink(clientLink)
-                                setGeneratedClientName(client.clientName)
-                                setShowLinkModal(true)
-                              }}
-                              className="text-green-600 border-green-200 hover:bg-green-50 text-xs px-2 py-1"
-                            >
-                              <EyeIcon className="h-3 w-3 mr-1" />
-                              Ver Link Cliente
-                            </Button>
+                          {/* Botón Ver Link - Solo ícono */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const clientLink = `${window.location.origin}/form/single-page?token=${client.token}`
+                              setGeneratedLink(clientLink)
+                              setGeneratedClientName(client.clientName)
+                              setShowLinkModal(true)
+                            }}
+                            className="text-green-600 border-green-200 hover:bg-green-50 p-2"
+                            title="Generar link para enviar al cliente por WhatsApp o email"
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </Button>
 
-                            {/* PDF Generator - Solo si formulario está completo */}
-                            {client.formProgress >= 100 && (
-                              <PDFGenerator 
-                                client={{
-                                  ...client,
-                                  clientPhone: client.client_phone || '',
-                                  createdAt: client.created_at
-                                }}
-                                onGenerated={() => console.log('PDF generado para', client.clientName)}
-                              />
+                          {/* Botón Comentarios - Solo ícono */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleOpenCommentsModal(client)
+                            }}
+                            className="text-purple-600 border-purple-200 hover:bg-purple-50 p-2"
+                            title="Agregar notas o comentarios sobre este cliente"
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+
+                          {/* PDF Generator - Solo si formulario está completo */}
+                          {client.formProgress >= 100 && (
+                            <PDFGenerator 
+                              client={{
+                                ...client,
+                                clientPhone: client.client_phone || '',
+                                createdAt: client.created_at
+                              }}
+                              onGenerated={() => console.log('PDF generado para', client.clientName)}
+                              iconOnly={true}
+                            />
+                          )}
+
+                          {/* Botón Pausar/Activar - Solo ícono */}
+                          <Button
+                            size="sm"
+                            variant={client.isActive ? "outline" : "secondary"}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              if (client.isActive) {
+                                deactivateToken(client.token)
+                              } else {
+                                activateToken(client.token)
+                              }
+                            }}
+                            className={`p-2 ${client.isActive 
+                              ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
+                              : "text-green-600 border-green-200 hover:bg-green-50"
+                            }`}
+                            title={client.isActive 
+                              ? "Pausar caso - El cliente NO podrá acceder al formulario" 
+                              : "Activar caso - El cliente SÍ podrá acceder al formulario"
+                            }
+                          >
+                            {client.isActive ? (
+                              <PauseIcon className="h-4 w-4" />
+                            ) : (
+                              <PlayIcon className="h-4 w-4" />
                             )}
-                          </div>
+                          </Button>
                           
-                          <div className="flex space-x-1">
-                            {/* 
-                              BOTÓN PAUSAR/ACTIVAR:
-                              - PAUSAR: Cambia el status del cliente a 'cancelled' en la base de datos
-                                El cliente NO podrá acceder al formulario con su token
-                                Útil para suspender temporalmente un caso (ej: falta de pago, documentos incompletos)
-                              
-                              - ACTIVAR: Cambia el status del cliente a 'draft' en la base de datos  
-                                El cliente SÍ podrá acceder al formulario con su token
-                                Útil para reactivar un caso después de resolver problemas
-                            */}
-                            <Button
-                              size="sm"
-                              variant={client.isActive ? "outline" : "secondary"}
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                console.log('Cambiando estado del cliente:', client.clientName, 'Activo:', client.isActive)
-                                if (client.isActive) {
-                                  deactivateToken(client.token)
-                                } else {
-                                  activateToken(client.token)
-                                }
-                              }}
-                              className={`text-xs px-2 py-1 ${client.isActive 
-                                ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
-                                : "text-green-600 border-green-200 hover:bg-green-50"
-                              }`}
-                              title={client.isActive 
-                                ? "Pausar: El cliente NO podrá acceder al formulario" 
-                                : "Activar: El cliente SÍ podrá acceder al formulario"
-                              }
-                            >
-                              {client.isActive ? (
-                                <>
-                                  <PauseIcon className="h-3 w-3 mr-1" />
-                                  Pausar
-                                </>
-                              ) : (
-                                <>
-                                  <PlayIcon className="h-3 w-3 mr-1" />
-                                  Activar
-                                </>
-                              )}
-                            </Button>
-                            
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                console.log('Intentando eliminar cliente:', client.clientName)
-                                handleDeleteWithConfirmation(client.token, client.clientName)
-                              }}
-                              className={`text-xs px-2 py-1 ${
-                                (deleteConfirmations[client.token] || 0) > 0
-                                  ? "text-red-800 border-red-500 bg-red-100 hover:bg-red-200"
-                                  : "text-red-600 border-red-200 hover:bg-red-50"
-                              }`}
-                            >
-                              <TrashIcon className="h-3 w-3 mr-1" />
-                              {deleteConfirmations[client.token] === 1 
-                                ? "Confirmar (2/3)" 
-                                : deleteConfirmations[client.token] === 2 
-                                  ? "¡ELIMINAR! (3/3)" 
-                                  : "Eliminar"
-                              }
-                            </Button>
-                          </div>
+                          {/* Botón Eliminar - Solo ícono */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleDeleteWithConfirmation(client.token, client.clientName)
+                            }}
+                            className={`p-2 ${
+                              (deleteConfirmations[client.token] || 0) > 0
+                                ? "text-red-800 border-red-500 bg-red-100 hover:bg-red-200"
+                                : "text-red-600 border-red-200 hover:bg-red-50"
+                            }`}
+                            title={deleteConfirmations[client.token] === 1 
+                              ? "Segunda confirmación requerida - Click para continuar (2/3)" 
+                              : deleteConfirmations[client.token] === 2 
+                                ? "¡ÚLTIMA CONFIRMACIÓN! - Click para eliminar permanentemente (3/3)" 
+                                : "Eliminar cliente y todos sus datos (3 confirmaciones requeridas)"
+                            }
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                      </React.Fragment>
+                    )
+                  })}
                 </tbody>
                   </table>
                 </div>
@@ -921,8 +1282,126 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Modal de Comentarios */}
+      {showCommentsModal && selectedClient && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Comentarios del Cliente
+                  </h2>
+                  <p className="text-gray-600 mt-1">
+                    <strong>{selectedClient.clientName}</strong>
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Token: {selectedClient.token}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowCommentsModal(false)
+                    setSelectedClient(null)
+                    setNewComment('')
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Lista de Comentarios Existentes */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Historial de Comentarios
+                </h3>
+                <div className="space-y-3 max-h-64 overflow-y-auto bg-gray-50 rounded-lg p-4">
+                  {(selectedClient.admin_comments && selectedClient.admin_comments.length > 0) ? (
+                    [...selectedClient.admin_comments].reverse().map((comment: string, index: number) => (
+                      <div key={index} className="bg-white rounded-lg p-3 border border-gray-200">
+                        <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                          {comment}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p>No hay comentarios aún</p>
+                      <p className="text-sm">Agrega el primer comentario abajo</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Agregar Nuevo Comentario */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Agregar Comentario
+                </h3>
+                <div className="space-y-3">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Escribe tu comentario sobre este cliente o caso..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    rows={4}
+                  />
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-500">
+                      Los comentarios incluyen fecha y hora automáticamente
+                    </p>
+                    <Button
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Agregar Comentario
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex justify-end space-x-3">
+                  <Button
+                    onClick={() => {
+                      setShowCommentsModal(false)
+                      setSelectedClient(null)
+                      setNewComment('')
+                    }}
+                    variant="outline"
+                    className="px-6 py-2"
+                  >
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Notificaciones */}
       <NotificationModal />
+      
+      {/* Modal de Gestión Familiar */}
+      {familyClient && (
+        <FamilyManagementModal
+          isOpen={showFamilyModal}
+          onClose={() => {
+            setShowFamilyModal(false)
+            setFamilyClient(null)
+          }}
+          clientName={familyClient.name}
+          clientToken={familyClient.token}
+          onCreateFamily={handleCreateFamily}
+        />
+      )}
     </div>
   )
 }

@@ -209,10 +209,10 @@ function FormWrapperContent({
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-4 py-2">
                         <div className="text-right">
                           <div className="text-sm font-semibold text-blue-800">
-                            ¡Hola {clientFullName || clientName}! 👋
+                            ESTIMADO {(clientFullName || clientName).toUpperCase()}, AGRADECEMOS SU CONFIANZA ✨
                           </div>
                           <div className="text-xs text-blue-600 mt-0.5">
-                            Gracias por confiar en A8Visas • Estamos para servirte
+                            ESTAMOS PARA SERVIRTE • A8VISAS
                           </div>
                         </div>
                       </div>

@@ -150,6 +150,68 @@ export default function CompleteDS160Form() {
   const [isFormSubmitted, setIsFormSubmitted] = useState(false)
   const [submittedData, setSubmittedData] = useState<CompleteDS160FormData | null>(null)
   const [isClientAccess, setIsClientAccess] = useState(false)
+  const [currentFormStep, setCurrentFormStep] = useState(1)
+  const [completedSteps, setCompletedSteps] = useState<number[]>([])
+  
+  // Definición de pasos del formulario
+  const formSteps = [
+    {
+      id: 1,
+      title: "Información Personal",
+      description: "Datos básicos y selección de consulado",
+      icon: "👤",
+      requiredFields: ['nombreCompleto', 'fechaNacimiento', 'ciudadEstadoPaisNacimiento', 'otraNacionalidad', 'consuladoDeseado', 'oficinaCAS']
+    },
+    {
+      id: 2, 
+      title: "Pasaporte y Contacto",
+      description: "Información de pasaporte y datos de contacto",
+      icon: "🛂",
+      requiredFields: ['numeroPasaporte', 'fechaExpedicion', 'fechaVencimiento', 'ciudadExpedicion', 'domicilioCasa', 'celular', 'correoElectronico', 'haUtilizadoOtrosNumeros', 'redesSociales', 'idiomas', 'estadoCivil']
+    },
+    {
+      id: 3,
+      title: "Información Laboral", 
+      description: "Detalles de empleo actual o anterior",
+      icon: "💼",
+      requiredFields: ['fechaInicioTrabajo', 'fechaFinTrabajo', 'nombreEmpresa', 'nombrePatron', 'domicilioEmpresa', 'telefonoEmpresa', 'puestoDesempenado', 'salarioMensualAproximado']
+    },
+    {
+      id: 4,
+      title: "Viaje a Estados Unidos",
+      description: "Información del viaje planeado", 
+      icon: "✈️",
+      requiredFields: ['fechaLlegadaUSA', 'duracionEstanciaUSA', 'hotelDomicilio', 'telefonoHotel', 'viajaConFamiliar']
+    },
+    {
+      id: 5,
+      title: "Información Educativa",
+      description: "Datos de estudios y educación",
+      icon: "📚", 
+      requiredFields: ['fechaInicioEstudios', 'fechaTerminoEstudios', 'nombreEscuela', 'gradoCarreraEstudiada', 'domicilioEscuela', 'telefonoEscuela', 'ciudadEscuela']
+    },
+    {
+      id: 6,
+      title: "Visas y Viajes Anteriores",
+      description: "Historial de visas y viajes previos",
+      icon: "🌍",
+      requiredFields: ['ciudadExpedicionVisaAnterior', 'fechaExpedicionVisaAnterior', 'fechaVencimientoVisaAnterior', 'paisesVisitados5Anos', 'parientesInmediatosUSA']
+    },
+    {
+      id: 7,
+      title: "Información Familiar", 
+      description: "Datos de padres y cónyuge",
+      icon: "👨‍👩‍👧‍👦",
+      requiredFields: ['apellidoNombrePadre', 'fechaNacimientoPadre', 'apellidoNombreMadre', 'fechaNacimientoMadre', 'esViudoDivorciado']
+    },
+    {
+      id: 8,
+      title: "Preguntas de Seguridad",
+      description: "Antecedentes y preguntas importantes",
+      icon: "⚠️", 
+      requiredFields: ['enfermedadesContagiosas', 'trastornoMentalFisico', 'abusoAdiccionDrogas', 'historialCriminal', 'sustanciasControladas', 'prostitucionTrafico', 'inmigracionIrregular']
+    }
+  ]
   
   // Hook de notificaciones
   const { 
@@ -403,138 +465,58 @@ Por favor, contacte al soporte técnico si el problema persiste.`
     router.push('/admin/dashboard')
   }
 
-  // Función para autocompletar todos los campos del formulario
-  const handleAutoComplete = () => {
-    const clientName = clientInfo?.clientName || 'EJEMPLO, USUARIO DEMO'
-    
-    const autoCompleteData: Partial<CompleteDS160FormData> = {
-      // SECCIÓN 1: Información Personal y Consulado
-      nombreCompleto: clientName,
-      fechaNacimiento: '1985-05-15',
-      ciudadEstadoPaisNacimiento: 'CIUDAD DE MÉXICO, DISTRITO FEDERAL, MÉXICO',
-      otraNacionalidad: 'NO',
-      especificarNacionalidad: '',
-      consuladoDeseado: 'EMBAJADA_CDMX',
-      oficinaCAS: 'CAS_MEX',
+  // Funciones de navegación por pasos
+  const goToNextStep = () => {
+    if (currentFormStep < formSteps.length && isStepComplete(currentFormStep)) {
+      setCurrentFormStep(currentFormStep + 1)
       
-      // SECCIÓN 2: Información del Pasaporte y Contacto
-      numeroPasaporte: 'G12345678',
-      fechaExpedicion: '2020-01-15',
-      fechaVencimiento: '2030-01-14',
-      ciudadExpedicion: 'Ciudad de México',
-      domicilioCasa: 'Av. Reforma 123, Col. Centro, Ciudad de México, CDMX 06000',
-      telefonoCasa: '55-1234-5678',
-      celular: '55-9876-5432',
-      correoElectronico: 'ejemplo@correo.com',
-      haUtilizadoOtrosNumeros: 'NO',
-      listaOtrosNumeros: '',
-      correosAdicionales: '',
-      redesSociales: 'Facebook, Instagram',
-      plataformasAdicionales: 'NO',
-      listaPlataformasAdicionales: '',
-      idiomas: 'Español, Inglés',
-      estadoCivil: 'SOLTERO',
-      
-      // SECCIÓN 3: Información Laboral
-      fechaInicioTrabajo: '2022-01',
-      fechaFinTrabajo: '2024-12-31',
-      nombreEmpresa: 'Tecnología Avanzada SA de CV',
-      nombrePatron: 'García Pérez, Juan Carlos',
-      domicilioEmpresa: 'Av. Tecnológico 456, Col. Innovación, Ciudad de México',
-      telefonoEmpresa: '55-2468-1357',
-      puestoDesempenado: 'Ingeniero de Software Senior',
-      salarioMensualAproximado: '$25,000.00 MXN',
-      
-      // SECCIÓN 4: Información de Viaje
-      fechaLlegadaUSA: '2024-06-15',
-      duracionEstanciaUSA: '10 días',
-      hotelDomicilio: 'Hotel Times Square, 123 Broadway, New York, NY 10001',
-      telefonoHotel: '+1-212-555-0123',
-      viajaConFamiliar: 'NO',
-      nombreFamiliar: '',
-      parentescoFamiliar: '',
-      estatusFamiliar: '',
-      domicilioFamiliar: '',
-      telefonoFamiliar: '',
-      
-      // SECCIÓN 5: Información Educativa
-      fechaInicioEstudios: '2025-10-01',
-      fechaTerminoEstudios: '2025-11-07',
-      nombreEscuela: 'UNIVERSIDAD DE LA VIDA',
-      gradoCarreraEstudiada: 'LIC. EN AMOR',
-      domicilioEscuela: 'CALLE DE LA MENTIRA',
-      telefonoEscuela: '3456677',
-      ciudadEscuela: 'MONTERREY',
-      
-      // SECCIÓN 6: Visas Anteriores y Viajes
-      ciudadExpedicionVisaAnterior: 'CIUDAD DE MEXICO',
-      fechaExpedicionVisaAnterior: '2025-10-08',
-      fechaVencimientoVisaAnterior: '2025-10-31',
-      fechaEntrada1USA: '2025-09-29',
-      duracionEstancia1: '3 DIAS',
-      fechaEntrada2USA: '2025-10-20',
-      duracionEstancia2: '2 DIAS',
-      fechaEntrada3USA: '2025-10-27',
-      duracionEstancia3: '3 DIAS',
-      paisesVisitados5Anos: 'COLOMBIA',
-      parientesInmediatosUSA: 'NINGUNO',
-      
-      // SECCIÓN 7: Información Familiar
-      apellidoNombrePadre: 'JOSE CUCHO',
-      fechaNacimientoPadre: '2025-10-02',
-      apellidoNombreMadre: 'PATRICIA DEL HOYO',
-      fechaNacimientoMadre: '2025-10-11',
-      nombreConyugeActual: 'ANGELICA MARIA',
-      fechaNacimientoConyugeActual: '2025-10-09',
-      ciudadNacimientoConyugeActual: '',
-      fechaMatrimonio: '2025-10-03',
-      domicilioConyugeActual: 'EDRR',
-      esViudoDivorciado: 'NO',
-      numeroMatrimoniosAnteriores: '',
-      nombreConyugeAnterior: '',
-      domicilioConyugeAnterior: '',
-      fechaNacimientoConyugeAnterior: '',
-      fechaMatrimonioAnterior: '',
-      fechaDivorcio: '',
-      terminosDivorcio: '',
-      
-      // SECCIÓN 8: Preguntas de Seguridad (Todas en NO para evitar problemas)
-      haVisitadoUSA: 'NO',
-      fechasVisitasAnteriores: '',
-      visasAnteriores: '',
-      arrestosCrimenes: 'NO',
-      detallesArrestos: '',
-      haExtraviadoVisa: 'NO',
-      leHanNegadoVisa: 'NO',
-      haExtraviadoPasaporte: 'NO',
-      enfermedadesContagiosas: 'NO',
-      detallesEnfermedadesContagiosas: '',
-      trastornoMentalFisico: 'NO',
-      detallesTrastornoMentalFisico: '',
-      abusoAdiccionDrogas: 'NO',
-      detallesAbusoAdiccionDrogas: '',
-      historialCriminal: 'NO',
-      detallesHistorialCriminal: '',
-      sustanciasControladas: 'NO',
-      detallesSustanciasControladas: '',
-      prostitucionTrafico: 'NO',
-      detallesProstitucionTrafico: '',
-      inmigracionIrregular: 'NO',
-      detallesInmigracionIrregular: ''
-    }
-
-    // Aplicar los valores usando setValue de react-hook-form
-    Object.entries(autoCompleteData).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        setValue(key as keyof CompleteDS160FormData, value)
+      // Marcar el paso actual como completado
+      if (!completedSteps.includes(currentFormStep)) {
+        setCompletedSteps([...completedSteps, currentFormStep])
       }
-    })
-
-    showSuccess(
-      '🚀 Formulario Autocompletado',
-      'Todos los campos han sido llenados con datos de ejemplo. Puede modificar cualquier información según sea necesario.'
-    )
+      
+      // Scroll al top
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
+
+  const goToPreviousStep = () => {
+    if (currentFormStep > 1) {
+      setCurrentFormStep(currentFormStep - 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const goToStep = (stepId: number) => {
+    // Solo permitir ir a pasos completados o al siguiente paso inmediato
+    if (stepId <= currentFormStep || completedSteps.includes(stepId - 1)) {
+      setCurrentFormStep(stepId)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  // Función para verificar si un paso está completo
+  const isStepComplete = (stepId: number): boolean => {
+    const step = formSteps.find(s => s.id === stepId)
+    if (!step) return false
+
+    const formValues = watch()
+    
+    // Verificar campos requeridos
+    return step.requiredFields.every(field => {
+      const value = formValues[field as keyof CompleteDS160FormData]
+      return value !== undefined && value !== '' && value !== null
+    })
+  }
+
+  // Función para verificar si el botón siguiente debe estar habilitado
+  const canProceedToNext = (): boolean => {
+    return isStepComplete(currentFormStep)
+  }
+
+
+
+
 
   // Obtener información del cliente desde el admin store
   const clientInfo = token ? getClientByToken(token) : null
@@ -569,6 +551,30 @@ Por favor, contacte al soporte técnico si el problema persiste.`
     }
   }, [isLoaded, token, formData])
 
+  // Efecto para guardar automáticamente cuando el formulario está listo para envío
+  useEffect(() => {
+    // Solo ejecutar si el formulario está cargado y no está siendo enviado
+    if (!isLoaded || isSubmitting || isFormSubmitted) return
+
+    // Verificar si estamos en el paso final y todo está válido para envío
+    const isReadyForSubmission = currentFormStep === 8 && isValid && canProceedToNext()
+    
+    if (isReadyForSubmission && token) {
+      console.log('💾 Formulario completo detectado - Guardando automáticamente como respaldo de seguridad...')
+      
+      // Guardar silenciosamente sin mostrar notificaciones al usuario
+      const currentData = watch()
+      saveDraft(8, currentData)
+        .then(() => {
+          console.log('✅ Respaldo de seguridad guardado exitosamente')
+        })
+        .catch(error => {
+          console.error('⚠️ Error en respaldo de seguridad:', error)
+          // No mostrar error al usuario ya que es un guardado silencioso
+        })
+    }
+  }, [currentFormStep, isValid, isLoaded, isSubmitting, isFormSubmitted, token, watch, canProceedToNext, saveDraft])
+
   // Mostrar loading mientras se cargan los datos
   if (formLoading) {
     return (
@@ -593,9 +599,21 @@ Por favor, contacte al soporte técnico si el problema persiste.`
           <div className="py-4">
             <div className="flex items-center justify-between w-full">
               <div className="flex-shrink-0">
-                <h1 className="text-2xl font-bold text-primary-900">
-                  {isClientAccess ? 'Formulario DS-160 - Visa Americana' : 'A8Visas - Formulario DS-160 Completo'}
-                </h1>
+                <div>
+                  <h1 className="text-2xl font-bold text-primary-900">
+                    {isClientAccess ? 'Formulario DS-160 - Visa Americana' : 'A8Visas - Formulario DS-160 Completo'}
+                  </h1>
+                  {clientInfo && clientInfo.clientName && clientInfo.clientName.trim() && (
+                    <div className="mt-2 p-3 bg-gradient-to-r from-blue-100 to-indigo-100 border-l-4 border-blue-500 rounded-r-lg">
+                      <p className="text-lg font-bold text-blue-900">
+                        📋 FORMULARIO PARA: {clientInfo.clientName.toUpperCase()}
+                      </p>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Este formulario DS-160 corresponde a la persona mencionada arriba
+                      </p>
+                    </div>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600">
                   {isClientAccess 
                     ? 'Complete todos los campos del formulario para su trámite de visa'
@@ -612,27 +630,21 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               {/* Mensaje personalizado con nombre del cliente */}
               {clientInfo && clientInfo.clientName && clientInfo.clientName.trim() && (
                 <div className="flex-1 mx-8 text-center">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-4 py-3">
-                    <p className="text-lg font-semibold text-blue-800">
-                      ¡Hola {clientInfo.clientName}! 👋
+                  <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-300 rounded-xl px-6 py-4 shadow-lg">
+                    <p className="text-xl font-bold text-blue-900 mb-1">
+                      🌟 ESTIMADO {clientInfo.clientName.toUpperCase()} 🌟
                     </p>
-                    <p className="text-sm text-blue-600 mt-1">
-                      Gracias por confiar en A8Visas • Estamos para servirte
+                    <p className="text-lg font-semibold text-blue-700">
+                      AGRADECEMOS SU CONFIANZA
+                    </p>
+                    <p className="text-sm text-blue-600 mt-2 font-medium">
+                      ESTAMOS PARA SERVIRLE • A8VISAS
                     </p>
                   </div>
                 </div>
               )}
 
               <div className="flex items-center space-x-4 flex-shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAutoComplete}
-                  className="flex items-center bg-gradient-to-r from-purple-50 to-purple-100 border-purple-300 text-purple-700 hover:from-purple-100 hover:to-purple-200 px-8 py-3"
-                  title="Completa automáticamente todos los campos con datos de ejemplo"
-                >
-                  🚀 Autocompletar
-                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -657,6 +669,83 @@ Por favor, contacte al soporte técnico si el problema persiste.`
         </div>
       </div>
 
+      {/* Indicador de Progreso por Pasos */}
+      <div className="bg-white border-b sticky top-[88px] z-30 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          {/* Información del Paso Actual */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <span className="text-2xl">{formSteps[currentFormStep - 1]?.icon}</span>
+                Paso {currentFormStep} de {formSteps.length}: {formSteps[currentFormStep - 1]?.title}
+              </h2>
+              <p className="text-gray-600 text-sm mt-1">
+                {formSteps[currentFormStep - 1]?.description}
+              </p>
+            </div>
+            
+            {/* Indicador de completado */}
+            <div className="flex items-center gap-2">
+              {isStepComplete(currentFormStep) ? (
+                <div className="flex items-center gap-2 text-green-600">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium">Completo</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-amber-600">
+                  <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium">Pendiente</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Barra de Progreso */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+              <span>Progreso General</span>
+              <span>{Math.round(((completedSteps.length + (isStepComplete(currentFormStep) ? 1 : 0)) / formSteps.length) * 100)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${((completedSteps.length + (isStepComplete(currentFormStep) ? 1 : 0)) / formSteps.length) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Mini navegador de pasos */}
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            {formSteps.map((step, index) => (
+              <button
+                key={step.id}
+                onClick={() => goToStep(step.id)}
+                disabled={step.id > currentFormStep && !completedSteps.includes(step.id - 1)}
+                className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                  currentFormStep === step.id
+                    ? 'bg-blue-600 text-white'
+                    : completedSteps.includes(step.id)
+                    ? 'bg-green-500 text-white hover:bg-green-600'
+                    : step.id < currentFormStep || completedSteps.includes(step.id - 1)
+                    ? 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {completedSteps.includes(step.id) ? '✓' : step.id}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Formulario */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
@@ -668,15 +757,16 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               <div>
                 <h4 className="font-semibold text-yellow-800">IMPORTANTE:</h4>
                 <p className="text-sm text-yellow-700">
-                  su Pasaporte debe tener una vigencia mínima de 6 meses posterior a la fecha en que va a viajar.
+                  Su pasaporte debe tener una vigencia mínima de 6 meses posterior a la fecha en que va a viajar.
                 </p>
               </div>
             </div>
           </div>
 
           {/* ====================================================================== */}
-          {/* SECCIÓN 1: INFORMACIÓN PERSONAL Y SELECCIÓN DE CONSULADO */}
+          {/* PASO 1: INFORMACIÓN PERSONAL Y SELECCIÓN DE CONSULADO */}
           {/* ====================================================================== */}
+          {currentFormStep === 1 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -813,10 +903,12 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               </div>
             </div>
           </div>
+          )}
 
           {/* ====================================================================== */}
-          {/* SECCIÓN 2: PASAPORTE Y CONTACTO */}
+          {/* PASO 2: PASAPORTE Y CONTACTO */}
           {/* ====================================================================== */}
+          {currentFormStep === 2 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -1068,10 +1160,12 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               </div>
             </div>
           </div>
+          )}
 
           {/* ====================================================================== */}
-          {/* SECCIÓN 3: INFORMACIÓN LABORAL */}
+          {/* PASO 3: INFORMACIÓN LABORAL */}
           {/* ====================================================================== */}
+          {currentFormStep === 3 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -1159,10 +1253,12 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               </div>
             </div>
           </div>
+          )}
 
           {/* ====================================================================== */}
-          {/* SECCIÓN 4: VIAJE A ESTADOS UNIDOS */}
+          {/* PASO 4: VIAJE A ESTADOS UNIDOS */}
           {/* ====================================================================== */}
+          {currentFormStep === 4 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -1276,10 +1372,12 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               </div>
             </div>
           </div>
+          )}
 
           {/* ====================================================================== */}
-          {/* SECCIÓN 5: ESTUDIOS PARA MAYORES DE 7 AÑOS */}
+          {/* PASO 5: ESTUDIOS PARA MAYORES DE 7 AÑOS */}
           {/* ====================================================================== */}
+          {currentFormStep === 5 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -1347,10 +1445,12 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               </div>
             </div>
           </div>
+          )}
 
           {/* ====================================================================== */}
-          {/* SECCIÓN 6: VISA ANTERIOR Y ANTECEDENTES DE VIAJE */}
+          {/* PASO 6: VISA ANTERIOR Y ANTECEDENTES DE VIAJE */}
           {/* ====================================================================== */}
+          {currentFormStep === 6 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -1479,10 +1579,12 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               </div>
             </div>
           </div>
+          )}
 
           {/* ====================================================================== */}
-          {/* SECCIÓN 7: INFORMACIÓN FAMILIAR */}
+          {/* PASO 7: INFORMACIÓN FAMILIAR */}
           {/* ====================================================================== */}
+          {currentFormStep === 7 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -1662,10 +1764,12 @@ Por favor, contacte al soporte técnico si el problema persiste.`
               </div>
             </div>
           </div>
+          )}
 
           {/* ====================================================================== */}
-          {/* SECCIÓN FINAL: PREGUNTAS DE SEGURIDAD Y ANTECEDENTES */}
+          {/* PASO 8: PREGUNTAS DE SEGURIDAD Y ANTECEDENTES */}
           {/* ====================================================================== */}
+          {currentFormStep === 8 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -1908,8 +2012,10 @@ Por favor, contacte al soporte técnico si el problema persiste.`
 
             </div>
           </div>
+          )}
 
           {/* Botón de Envío o Estado Completado */}
+          {currentFormStep === 8 && (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-8 text-center space-y-4">
               {isFormSubmitted ? (
@@ -1995,6 +2101,62 @@ Por favor, contacte al soporte técnico si el problema persiste.`
                   </div>
                 </>
               )}
+            </div>
+          </div>
+          )}
+
+          {/* Botones de Navegación por Pasos */}
+          <div className="bg-white rounded-lg shadow-sm border mt-8">
+            <div className="px-6 py-6">
+              <div className="flex items-center justify-between">
+                {/* Botón Anterior */}
+                <div>
+                  {currentFormStep > 1 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={goToPreviousStep}
+                      className="flex items-center gap-2 px-6 py-3"
+                    >
+                      ← Paso Anterior
+                    </Button>
+                  ) : (
+                    <div></div>
+                  )}
+                </div>
+
+                {/* Información del Paso */}
+                <div className="text-center">
+                  <div className="text-sm text-gray-600">
+                    Paso {currentFormStep} de {formSteps.length}
+                  </div>
+                  {!canProceedToNext() && currentFormStep < formSteps.length && (
+                    <div className="text-xs text-red-600 mt-1">
+                      Complete todos los campos requeridos para continuar
+                    </div>
+                  )}
+                </div>
+
+                {/* Botón Siguiente */}
+                <div>
+                  {currentFormStep < formSteps.length ? (
+                    <Button
+                      type="button"
+                      onClick={goToNextStep}
+                      disabled={!canProceedToNext()}
+                      className={`flex items-center gap-2 px-6 py-3 ${
+                        canProceedToNext()
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Siguiente Paso →
+                    </Button>
+                  ) : (
+                    <div></div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
