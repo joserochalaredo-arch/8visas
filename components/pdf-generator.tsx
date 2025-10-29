@@ -9,9 +9,10 @@ import jsPDF from 'jspdf'
 interface PDFGeneratorProps {
   client: ClientData
   onGenerated?: (pdfUrl: string) => void
+  autoDownload?: boolean
 }
 
-export function PDFGenerator({ client, onGenerated }: PDFGeneratorProps) {
+export function PDFGenerator({ client, onGenerated, autoDownload = false }: PDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
 
   const generatePDF = async () => {
@@ -182,8 +183,8 @@ export function PDFGenerator({ client, onGenerated }: PDFGeneratorProps) {
         </>
       ) : (
         <>
-          <FileText className="h-4 w-4 mr-2" />
-          Generar PDF
+          <Download className="h-4 w-4 mr-2" />
+          📄 Descargar Info en PDF
         </>
       )}
     </Button>

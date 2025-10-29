@@ -10,6 +10,7 @@ import { TextArea } from '@/components/ui/textarea'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
 import { Button } from '@/components/ui/button'
 import { useNotificationModal } from '@/components/notification-modal'
+import { PDFGenerator } from '@/components/pdf-generator'
 import { useEffect, useState } from 'react'
 
 // Interface completa para todo el formulario DS-160
@@ -144,6 +145,9 @@ export default function CompleteDS160Form() {
   const { saveDraft } = useStepNavigation()
   const { isLoading: formLoading, isLoaded } = useFormPersistence(token)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isFormSubmitted, setIsFormSubmitted] = useState(false)
+  const [submittedData, setSubmittedData] = useState<CompleteDS160FormData | null>(null)
+  const [isClientAccess, setIsClientAccess] = useState(false)
   
   // Hook de notificaciones
   const { 
@@ -322,6 +326,10 @@ export default function CompleteDS160Form() {
       // Guardar todos los datos
       await saveDraft(7, data) // Marcar como paso 7 (completado)
       
+      // Marcar formulario como enviado y guardar datos
+      setIsFormSubmitted(true)
+      setSubmittedData(data)
+      
       // Mostrar mensaje de éxito
       const successMessage = isClientAccess 
         ? `Ha completado todo el formulario DS-160 correctamente.
@@ -343,11 +351,6 @@ export default function CompleteDS160Form() {
         '🎉 ¡FORMULARIO COMPLETADO EXITOSAMENTE!',
         successMessage
       )
-      
-      // Redirigir solo si es admin, si es cliente mostrar mensaje de finalización
-      if (!isClientAccess) {
-        router.push('/admin/dashboard')
-      }
     } catch (error) {
       console.error('❌ Error enviando formulario:', error)
       showError(
@@ -398,7 +401,9 @@ Por favor, contacte al soporte técnico si el problema persiste.`
   }
 
   // Verificar si es acceso de cliente (con token) o admin (sin token)
-  const isClientAccess = !!token
+  useEffect(() => {
+    setIsClientAccess(!!token)
+  }, [token])
 
   // Mostrar loading mientras se cargan los datos
   if (formLoading) {
@@ -1719,34 +1724,92 @@ Por favor, contacte al soporte técnico si el problema persiste.`
             </div>
           </div>
 
-          {/* Botón de Envío */}
+          {/* Botón de Envío o Estado Completado */}
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="px-6 py-8 text-center space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                ✅ ¿Está listo para enviar su formulario DS-160?
-              </h3>
-              <p className="text-gray-600">
-                Revise toda la información antes de enviar. Una vez enviado, no podrá realizar cambios.
-              </p>
-              
-              <div className="flex justify-center space-x-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onSave}
-                  className="flex items-center"
-                >
-                  💾 Guardar Borrador
-                </Button>
-                
-                <Button
-                  type="submit"
-                  disabled={!isValid || isSubmitting}
-                  className="flex items-center bg-success-600 hover:bg-success-700 text-white px-8 py-3"
-                >
-                  {isSubmitting ? '📤 Enviando...' : '📤 ENVIAR FORMULARIO DS-160'}
-                </Button>
-              </div>
+              {isFormSubmitted ? (
+                // Estado post-envío: formulario completado
+                <>
+                  <div className="flex justify-center mb-4">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-green-800">
+                    ✅ DS160 - CONCLUIDO
+                  </h3>
+                  <p className="text-green-700">
+                    Su formulario DS-160 ha sido completado y enviado exitosamente.
+                  </p>
+                  
+                  <div className="flex justify-center space-x-4 mt-6">
+                    {submittedData && (
+                      <PDFGenerator 
+                        client={{
+                          token: token || 'COMPLETED',
+                          clientName: submittedData.nombreCompleto || 'Cliente',
+                          clientEmail: submittedData.correoElectronico || '',
+                          clientPhone: submittedData.celular || '',
+                          formData: submittedData,
+                          formProgress: 100,
+                          formStatus: 'completed',
+                          paymentStatus: 'pending',
+                          lastActivity: new Date().toISOString(),
+                          createdAt: new Date().toISOString(),
+                          isActive: true,
+                          adminComments: []
+                        }}
+                        onGenerated={(fileName) => {
+                          console.log('PDF generado:', fileName)
+                        }}
+                      />
+                    )}
+                    
+                    {!isClientAccess && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => router.push('/admin/dashboard')}
+                        className="flex items-center"
+                      >
+                        ← Dashboard Admin
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                // Estado pre-envío: botones normales
+                <>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    ✅ ¿Está listo para enviar su formulario DS-160?
+                  </h3>
+                  <p className="text-gray-600">
+                    Revise toda la información antes de enviar. Una vez enviado, no podrá realizar cambios.
+                  </p>
+                  
+                  <div className="flex justify-center space-x-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onSave}
+                      className="flex items-center"
+                      disabled={isSubmitting}
+                    >
+                      💾 Guardar Borrador
+                    </Button>
+                    
+                    <Button
+                      type="submit"
+                      disabled={!isValid || isSubmitting}
+                      className="flex items-center bg-success-600 hover:bg-success-700 text-white px-8 py-3"
+                    >
+                      {isSubmitting ? '📤 Enviando...' : '📤 ENVIAR FORMULARIO DS-160'}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

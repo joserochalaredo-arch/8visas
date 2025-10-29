@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import { useDS160Store } from '@/store/ds160-store'
 import { FormWrapper } from '@/components/form-wrapper'
+import { useStepNavigation } from '@/hooks/useStepNavigation'
 import { useEffect } from 'react'
 
 interface Step7FormData {
@@ -13,8 +14,9 @@ interface Step7FormData {
 export default function Step7() {
   const router = useRouter()
   const { setCurrentStep } = useDS160Store()
+  const { saveDraft } = useStepNavigation()
   
-  const { handleSubmit, formState: { isValid } } = useForm<Step7FormData>({
+  const { handleSubmit, getValues, formState: { isValid } } = useForm<Step7FormData>({
     defaultValues: {},
     mode: 'onChange'
   })
@@ -25,12 +27,17 @@ export default function Step7() {
 
   const onSubmit = (data: Step7FormData) => {
     console.log('Step 7 data:', data)
-    router.push('/admin/dashboard') // Última página, regresa al dashboard
+    router.push('/form/complete')
   }
 
-  const onSave = () => {
-    console.log('Save step 7 draft')
-    alert('✅ Borrador guardado exitosamente')
+  const onSave = async () => {
+    const data = getValues()
+    const saved = await saveDraft(7, data)
+    if (saved) {
+      alert('✅ Borrador guardado exitosamente')
+    } else {
+      alert('❌ Error al guardar borrador')
+    }
   }
 
   return (

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import { useDS160Store } from '@/store/ds160-store'
 import { FormWrapper } from '@/components/form-wrapper'
+import { useStepNavigation } from '@/hooks/useStepNavigation'
 import { useEffect } from 'react'
 
 interface Step6FormData {
@@ -13,8 +14,9 @@ interface Step6FormData {
 export default function Step6() {
   const router = useRouter()
   const { setCurrentStep } = useDS160Store()
+  const { saveDraft } = useStepNavigation()
   
-  const { handleSubmit, formState: { isValid } } = useForm<Step6FormData>({
+  const { handleSubmit, getValues, formState: { isValid } } = useForm<Step6FormData>({
     defaultValues: {},
     mode: 'onChange'
   })
@@ -28,9 +30,14 @@ export default function Step6() {
     router.push('/form/step-7')
   }
 
-  const onSave = () => {
-    console.log('Save step 6 draft')
-    alert('✅ Borrador guardado exitosamente')
+  const onSave = async () => {
+    const data = getValues()
+    const saved = await saveDraft(6, data)
+    if (saved) {
+      alert('✅ Borrador guardado exitosamente')
+    } else {
+      alert('❌ Error al guardar borrador')
+    }
   }
 
   return (
