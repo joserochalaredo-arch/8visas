@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAdminStore } from '@/store/admin-store'
+import { useAdminSupabase } from '@/hooks/use-admin-supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PlusIcon, EyeIcon, TrashIcon, UserIcon, MailIcon, PhoneIcon, CalendarIcon, ActivityIcon, ArrowRightIcon, CheckCircleIcon, PlayIcon, PauseIcon, LogOutIcon, FileText } from 'lucide-react'
 import { PaymentStatusSelector } from '@/components/payment-status-selector'
 import { PDFGenerator } from '@/components/pdf-generator'
+import { useNotificationModal } from '@/components/notification-modal'
 import Image from 'next/image'
 
 export default function AdminDashboard() {
@@ -34,6 +35,15 @@ export default function AdminDashboard() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
+  // Hook de notificaciones
+  const { 
+    showSuccess, 
+    showError, 
+    showWarning, 
+    showInfo, 
+    NotificationModal 
+  } = useNotificationModal()
+
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -58,8 +68,10 @@ export default function AdminDashboard() {
         return newState
       })
       setShowDeleteModal(false)
-      setSuccessMessage(`Cliente "${clientName}" eliminado exitosamente`)
-      setShowSuccessModal(true)
+      showSuccess(
+        '¡Cliente eliminado!',
+        `El cliente "${clientName}" ha sido eliminado exitosamente del sistema.`
+      )
     }
   }
 
@@ -73,6 +85,7 @@ export default function AdminDashboard() {
   
   const { 
     isAdminAuthenticated, 
+    isInitialized,
     adminLogout, 
     generateClientToken, 
     getAllClients, 
@@ -81,8 +94,9 @@ export default function AdminDashboard() {
     deleteClient,
     updatePaymentStatus,
     markFormAsCompleted,
-    updateFormStatus
-  } = useAdminStore()
+    clients,
+    loading
+  } = useAdminSupabase()
   
   const router = useRouter()
   const allClients = getAllClients()
@@ -91,16 +105,28 @@ export default function AdminDashboard() {
   const totalPages = Math.ceil(allClients.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const clients = allClients.slice(startIndex, endIndex)
+  const paginatedClients = allClients.slice(startIndex, endIndex)
 
   // Verificar autenticación del admin
   useEffect(() => {
-    if (!isAdminAuthenticated) {
-      router.push('/')
+    if (isInitialized && !isAdminAuthenticated) {
+      console.log('🔒 Usuario no autenticado, redirigiendo al login...')
+      router.push('/admin')
     }
-  }, [isAdminAuthenticated, router])
+  }, [isAdminAuthenticated, isInitialized, router])
 
   // Show loading while checking authentication
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Inicializando...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!isAdminAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
@@ -125,70 +151,102 @@ export default function AdminDashboard() {
     setShowCreateForm(false)
   }
 
-  const handleAdminFillsForm = () => {
-    // El admin llenará el formulario - generar token y abrir formulario
-    const token = generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
-    setShowWhoFillsModal(false)
-    // Limpiar formulario
-    setNewClientName('')
-    setNewClientEmail('')
-    setNewClientPhone('')
-    setNewClientComments('')
-    setPendingClientData({ name: '', email: '', phone: '', comments: '' })
-    // Redirigir al formulario con el token
-    router.push(`/form/single-page?token=${token}`)
+  const handleAdminFillsForm = async () => {
+    try {
+      // El admin llenará el formulario - generar token y abrir formulario
+      const token = await generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
+      setShowWhoFillsModal(false)
+      // Limpiar formulario
+      setNewClientName('')
+      setNewClientEmail('')
+      setNewClientPhone('')
+      setNewClientComments('')
+      setPendingClientData({ name: '', email: '', phone: '', comments: '' })
+      // Redirigir al formulario con el token
+      router.push(`/form/single-page?token=${token}`)
+    } catch (error) {
+      console.error('Error generando token:', error)
+      showError(
+        'Error al generar token',
+        'No se pudo generar el token para llenar el formulario. Verifique su conexión e inténtalo de nuevo.'
+      )
+    }
   }
 
-  const handleAdminFillsSinglePage = () => {
-    // El admin llenará el formulario en página única - generar token y abrir formulario
-    const token = generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
-    setShowWhoFillsModal(false)
-    // Limpiar formulario
-    setNewClientName('')
-    setNewClientEmail('')
-    setNewClientPhone('')
-    setNewClientComments('')
-    setPendingClientData({ name: '', email: '', phone: '', comments: '' })
-    // Redirigir al formulario de página única con el token
-    router.push(`/form/single-page?token=${token}`)
+  const handleAdminFillsSinglePage = async () => {
+    try {
+      // El admin llenará el formulario en página única - generar token y abrir formulario
+      const token = await generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
+      setShowWhoFillsModal(false)
+      // Limpiar formulario
+      setNewClientName('')
+      setNewClientEmail('')
+      setNewClientPhone('')
+      setNewClientComments('')
+      setPendingClientData({ name: '', email: '', phone: '', comments: '' })
+      // Redirigir al formulario de página única con el token
+      router.push(`/form/single-page?token=${token}`)
+    } catch (error) {
+      console.error('Error generando token:', error)
+      showError(
+        'Error al generar token',
+        'No se pudo generar el token para el formulario de página única. Verifique su conexión e inténtalo de nuevo.'
+      )
+    }
   }
 
-  const handleClientFillsForm = () => {
-    // El cliente llenará el formulario - generar token y mostrar link
-    const token = generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
-    const clientLink = `${window.location.origin}/form/single-page?token=${token}`
-    
-    setShowWhoFillsModal(false)
-    // Limpiar formulario
-    setNewClientName('')
-    setNewClientEmail('')
-    setNewClientPhone('')
-    setNewClientComments('')
-    setPendingClientData({ name: '', email: '', phone: '', comments: '' })
-    
-    // Mostrar el link al admin en modal
-    setGeneratedLink(clientLink)
-    setGeneratedClientName(pendingClientData.name)
-    setShowLinkModal(true)
+  const handleClientFillsForm = async () => {
+    try {
+      // El cliente llenará el formulario - generar token y mostrar link
+      const token = await generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
+      const clientLink = `${window.location.origin}/form/single-page?token=${token}`
+      
+      setShowWhoFillsModal(false)
+      // Limpiar formulario
+      setNewClientName('')
+      setNewClientEmail('')
+      setNewClientPhone('')
+      setNewClientComments('')
+      setPendingClientData({ name: '', email: '', phone: '', comments: '' })
+      
+      // Mostrar el link al admin en modal
+      setGeneratedLink(clientLink)
+      setGeneratedClientName(pendingClientData.name)
+      setShowLinkModal(true)
+    } catch (error) {
+      console.error('Error generando token:', error)
+      showError(
+        'Error al generar token para cliente',
+        'No se pudo generar el token para que el cliente llene el formulario. Verifique su conexión e inténtalo de nuevo.'
+      )
+    }
   }
 
-  const handleClientFillsSinglePage = () => {
-    // El cliente llenará el formulario en página única - generar token y mostrar link
-    const token = generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
-    const clientLink = `${window.location.origin}/form/single-page?token=${token}`
-    
-    setShowWhoFillsModal(false)
-    // Limpiar formulario
-    setNewClientName('')
-    setNewClientEmail('')
-    setNewClientPhone('')
-    setNewClientComments('')
-    setPendingClientData({ name: '', email: '', phone: '', comments: '' })
-    
-    // Mostrar el link al admin en modal
-    setGeneratedLink(clientLink)
-    setGeneratedClientName(pendingClientData.name)
-    setShowLinkModal(true)
+  const handleClientFillsSinglePage = async () => {
+    try {
+      // El cliente llenará el formulario en página única - generar token y mostrar link
+      const token = await generateClientToken(pendingClientData.name, pendingClientData.email, pendingClientData.phone)
+      const clientLink = `${window.location.origin}/form/single-page?token=${token}`
+      
+      setShowWhoFillsModal(false)
+      // Limpiar formulario
+      setNewClientName('')
+      setNewClientEmail('')
+      setNewClientPhone('')
+      setNewClientComments('')
+      setPendingClientData({ name: '', email: '', phone: '', comments: '' })
+      
+      // Mostrar el link al admin en modal
+      setGeneratedLink(clientLink)
+      setGeneratedClientName(pendingClientData.name)
+      setShowLinkModal(true)
+    } catch (error) {
+      console.error('Error generando token:', error)
+      showError(
+        'Error al generar token para página única',
+        'No se pudo generar el token para que el cliente llene el formulario en página única. Verifique su conexión e inténtalo de nuevo.'
+      )
+    }
   }
 
   const handleLogout = () => {
@@ -307,9 +365,12 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-semibold text-gray-900">Clientes y Tokens</h2>
           </div>
           
-          {!isClient ? (
+          {!isClient || loading ? (
             <div className="p-12 text-center">
-              <div className="animate-pulse">Cargando clientes...</div>
+              <div className="animate-pulse">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                Cargando clientes desde Supabase...
+              </div>
             </div>
           ) : allClients.length === 0 ? (
             <div className="p-12 text-center">
@@ -319,16 +380,13 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <>
-              <div className="min-w-full overflow-x-auto" style={{ overflowY: 'visible' }}>
-                <div className="inline-block min-w-full">
-                  <table className="min-w-full divide-y divide-gray-200">
+              <div className="min-w-full overflow-x-auto" style={{ overflowY: 'visible', zIndex: 1 }}>
+                <div className="inline-block min-w-full" style={{ position: 'relative' }}>
+                  <table className="min-w-full divide-y divide-gray-200" style={{ position: 'relative', zIndex: 1 }}>
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cliente
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Token
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Progreso
@@ -348,7 +406,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {clients.map((client) => (
+                  {paginatedClients.map((client) => (
                     <tr key={client.token} className="hover:bg-gray-50">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div>
@@ -362,18 +420,13 @@ export default function AdminDashboard() {
                             <MailIcon className="h-3 w-3 text-gray-400 mr-1" />
                             <span className="text-xs text-gray-600 truncate max-w-[120px]">{client.clientEmail}</span>
                           </div>
-                          {client.clientPhone && (
+                          {client.client_phone && (
                             <div className="flex items-center mt-1">
                               <PhoneIcon className="h-3 w-3 text-gray-400 mr-1" />
-                              <span className="text-xs text-gray-600">{client.clientPhone}</span>
+                              <span className="text-xs text-gray-600">{client.client_phone}</span>
                             </div>
                           )}
                         </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
-                          {client.token}
-                        </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
@@ -390,7 +443,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <PaymentStatusSelector
-                          currentStatus={client.paymentStatus || 'pending'}
+                          currentStatus={client.payment_status as 'pending' | 'paid' | 'partial' | 'cancelled' || 'pending'}
                           onStatusChange={(status) => {
                             console.log('Cambiando estado de pago para:', client.clientName, 'Nuevo estado:', status)
                             updatePaymentStatus(client.token, status)
@@ -458,13 +511,27 @@ export default function AdminDashboard() {
                             {/* PDF Generator - Solo si formulario está completo */}
                             {client.formProgress >= 100 && (
                               <PDFGenerator 
-                                client={client}
+                                client={{
+                                  ...client,
+                                  clientPhone: client.client_phone || '',
+                                  createdAt: client.created_at
+                                }}
                                 onGenerated={() => console.log('PDF generado para', client.clientName)}
                               />
                             )}
                           </div>
                           
                           <div className="flex space-x-1">
+                            {/* 
+                              BOTÓN PAUSAR/ACTIVAR:
+                              - PAUSAR: Cambia el status del cliente a 'cancelled' en la base de datos
+                                El cliente NO podrá acceder al formulario con su token
+                                Útil para suspender temporalmente un caso (ej: falta de pago, documentos incompletos)
+                              
+                              - ACTIVAR: Cambia el status del cliente a 'draft' en la base de datos  
+                                El cliente SÍ podrá acceder al formulario con su token
+                                Útil para reactivar un caso después de resolver problemas
+                            */}
                             <Button
                               size="sm"
                               variant={client.isActive ? "outline" : "secondary"}
@@ -482,6 +549,10 @@ export default function AdminDashboard() {
                                 ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
                                 : "text-green-600 border-green-200 hover:bg-green-50"
                               }`}
+                              title={client.isActive 
+                                ? "Pausar: El cliente NO podrá acceder al formulario" 
+                                : "Activar: El cliente SÍ podrá acceder al formulario"
+                              }
                             >
                               {client.isActive ? (
                                 <>
@@ -715,8 +786,10 @@ export default function AdminDashboard() {
                   <Button
                     onClick={() => {
                       navigator.clipboard.writeText(generatedLink)
-                      setSuccessMessage('¡Enlace copiado al portapapeles!')
-                      setShowSuccessModal(true)
+                      showSuccess(
+                        '¡Enlace copiado!',
+                        'El enlace del cliente ha sido copiado al portapapeles exitosamente.'
+                      )
                     }}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
                   >
@@ -847,6 +920,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal de Notificaciones */}
+      <NotificationModal />
     </div>
   )
 }

@@ -134,6 +134,384 @@ export interface Database {
       }
       
       // ========================================================================
+      // TABLA: ds160_forms - Nueva tabla para formularios DS-160
+      // ========================================================================
+      ds160_forms: {
+        Row: {
+          id: number
+          form_token: string
+          client_name: string
+          client_email: string | null
+          client_phone: string | null
+          status: string
+          current_step: number
+          completed_at: string | null
+          progress_percentage: number
+          payment_status: string
+          admin_comments: string[] | null
+          created_at: string
+          updated_at: string
+          // Información personal
+          apellidos: string | null
+          nombres: string | null
+          nombre_completo: string | null
+          fecha_nacimiento: string | null
+          ciudad_nacimiento: string | null
+          estado_nacimiento: string | null
+          pais_nacimiento: string | null
+          nacionalidad: string | null
+          otra_nacionalidad: string | null
+          consulado_deseado: string | null
+          oficina_cas: string | null
+          // Información del pasaporte
+          numero_pasaporte: string | null
+          fecha_expedicion: string | null
+          fecha_vencimiento: string | null
+          // Información de contacto
+          domicilio_casa: string | null
+          telefono_casa: string | null
+          celular: string | null
+          correo_electronico: string | null
+          estado_civil: string | null
+          // Información laboral
+          ocupacion_actual: string | null
+          empleador: string | null
+          salario_mensual: number | null
+          direccion_trabajo: string | null
+          telefono_trabajo: string | null
+          // Información de viaje
+          proposito_viaje: string | null
+          fecha_llegada: string | null
+          fecha_salida: string | null
+          duracion_estancia: string | null
+          direccion_usa: string | null
+          nombre_patrocinador: string | null
+          telefono_patrocinador: string | null
+          domicilio_patrocinador: string | null
+          parentesco: string | null
+          quien_paga_viaje: string | null
+          personas_que_viajan: string | null
+          // Antecedentes
+          ha_visitado_usa: string | null
+          fechas_visitas_anteriores: string | null
+          ha_sido_deportado: string | null
+          detalles_deportacion: string | null
+          le_han_negado_visa: string | null
+          detalles_negacion_visa: string | null
+          visas_anteriores: string | null
+          // Familia
+          nombre_padre: string | null
+          fecha_nacimiento_padre: string | null
+          nombre_madre: string | null
+          fecha_nacimiento_madre: string | null
+          familiares_en_usa: string | null
+          detalles_familiares_usa: string | null
+          tiene_hijos: string | null
+          // Seguridad
+          enfermedades_contagiosas: string | null
+          detalles_enfermedades_contagiosas: string | null
+          trastorno_mental_fisico: string | null
+          detalles_trastorno_mental_fisico: string | null
+          abuso_adiccion_drogas: string | null
+          detalles_abuso_adiccion_drogas: string | null
+          arrestos_crimenes: string | null
+          detalles_arrestos: string | null
+          sustancias_controladas: string | null
+          detalles_sustancias_controladas: string | null
+          prostitucion_trafico: string | null
+          detalles_prostitucion_trafico: string | null
+          actividades_terroristas: string | null
+          detalles_actividades_terroristas: string | null
+          actividades_espionaje: string | null
+          detalles_actividades_espionaje: string | null
+          genocidio_crimenes_guerra: string | null
+          detalles_genocidio_crimenes_guerra: string | null
+          inmigracion_irregular: string | null
+          detalles_inmigracion_irregular: string | null
+          // Adicionales
+          observaciones_adicionales: string | null
+          ha_extraviado_visa: string | null
+          ha_extraviado_pasaporte: string | null
+          detalles_adicionales: string | null
+          cita_cas: string | null
+          ciudad_cita: string | null
+          trabajos_anteriores: Json | null
+          informacion_hijos: Json | null
+          documentos_adjuntos: string[] | null
+        }
+        Insert: {
+          id?: number
+          form_token: string
+          client_name: string
+          client_email?: string | null
+          client_phone?: string | null
+          status?: string
+          current_step?: number
+          completed_at?: string | null
+          progress_percentage?: number
+          payment_status?: string
+          admin_comments?: string[] | null
+          created_at?: string
+          updated_at?: string
+          // Todos los demás campos opcionales...
+          apellidos?: string | null
+          nombres?: string | null
+          nombre_completo?: string | null
+          fecha_nacimiento?: string | null
+          ciudad_nacimiento?: string | null
+          estado_nacimiento?: string | null
+          pais_nacimiento?: string | null
+          nacionalidad?: string | null
+          otra_nacionalidad?: string | null
+          consulado_deseado?: string | null
+          oficina_cas?: string | null
+          numero_pasaporte?: string | null
+          fecha_expedicion?: string | null
+          fecha_vencimiento?: string | null
+          domicilio_casa?: string | null
+          telefono_casa?: string | null
+          celular?: string | null
+          correo_electronico?: string | null
+          estado_civil?: string | null
+          ocupacion_actual?: string | null
+          empleador?: string | null
+          salario_mensual?: number | null
+          direccion_trabajo?: string | null
+          telefono_trabajo?: string | null
+          proposito_viaje?: string | null
+          fecha_llegada?: string | null
+          fecha_salida?: string | null
+          duracion_estancia?: string | null
+          direccion_usa?: string | null
+          nombre_patrocinador?: string | null
+          telefono_patrocinador?: string | null
+          domicilio_patrocinador?: string | null
+          parentesco?: string | null
+          quien_paga_viaje?: string | null
+          personas_que_viajan?: string | null
+          ha_visitado_usa?: string | null
+          fechas_visitas_anteriores?: string | null
+          ha_sido_deportado?: string | null
+          detalles_deportacion?: string | null
+          le_han_negado_visa?: string | null
+          detalles_negacion_visa?: string | null
+          visas_anteriores?: string | null
+          nombre_padre?: string | null
+          fecha_nacimiento_padre?: string | null
+          nombre_madre?: string | null
+          fecha_nacimiento_madre?: string | null
+          familiares_en_usa?: string | null
+          detalles_familiares_usa?: string | null
+          tiene_hijos?: string | null
+          enfermedades_contagiosas?: string | null
+          detalles_enfermedades_contagiosas?: string | null
+          trastorno_mental_fisico?: string | null
+          detalles_trastorno_mental_fisico?: string | null
+          abuso_adiccion_drogas?: string | null
+          detalles_abuso_adiccion_drogas?: string | null
+          arrestos_crimenes?: string | null
+          detalles_arrestos?: string | null
+          sustancias_controladas?: string | null
+          detalles_sustancias_controladas?: string | null
+          prostitucion_trafico?: string | null
+          detalles_prostitucion_trafico?: string | null
+          actividades_terroristas?: string | null
+          detalles_actividades_terroristas?: string | null
+          actividades_espionaje?: string | null
+          detalles_actividades_espionaje?: string | null
+          genocidio_crimenes_guerra?: string | null
+          detalles_genocidio_crimenes_guerra?: string | null
+          inmigracion_irregular?: string | null
+          detalles_inmigracion_irregular?: string | null
+          observaciones_adicionales?: string | null
+          ha_extraviado_visa?: string | null
+          ha_extraviado_pasaporte?: string | null
+          detalles_adicionales?: string | null
+          cita_cas?: string | null
+          ciudad_cita?: string | null
+          trabajos_anteriores?: Json | null
+          informacion_hijos?: Json | null
+          documentos_adjuntos?: string[] | null
+        }
+        Update: {
+          id?: number
+          form_token?: string
+          client_name?: string
+          client_email?: string | null
+          client_phone?: string | null
+          status?: string
+          current_step?: number
+          completed_at?: string | null
+          progress_percentage?: number
+          payment_status?: string
+          admin_comments?: string[] | null
+          created_at?: string
+          updated_at?: string
+          // Todos los demás campos opcionales para actualización...
+          apellidos?: string | null
+          nombres?: string | null
+          nombre_completo?: string | null
+          fecha_nacimiento?: string | null
+          ciudad_nacimiento?: string | null
+          estado_nacimiento?: string | null
+          pais_nacimiento?: string | null
+          nacionalidad?: string | null
+          otra_nacionalidad?: string | null
+          consulado_deseado?: string | null
+          oficina_cas?: string | null
+          numero_pasaporte?: string | null
+          fecha_expedicion?: string | null
+          fecha_vencimiento?: string | null
+          domicilio_casa?: string | null
+          telefono_casa?: string | null
+          celular?: string | null
+          correo_electronico?: string | null
+          estado_civil?: string | null
+          ocupacion_actual?: string | null
+          empleador?: string | null
+          salario_mensual?: number | null
+          direccion_trabajo?: string | null
+          telefono_trabajo?: string | null
+          proposito_viaje?: string | null
+          fecha_llegada?: string | null
+          fecha_salida?: string | null
+          duracion_estancia?: string | null
+          direccion_usa?: string | null
+          nombre_patrocinador?: string | null
+          telefono_patrocinador?: string | null
+          domicilio_patrocinador?: string | null
+          parentesco?: string | null
+          quien_paga_viaje?: string | null
+          personas_que_viajan?: string | null
+          ha_visitado_usa?: string | null
+          fechas_visitas_anteriores?: string | null
+          ha_sido_deportado?: string | null
+          detalles_deportacion?: string | null
+          le_han_negado_visa?: string | null
+          detalles_negacion_visa?: string | null
+          visas_anteriores?: string | null
+          nombre_padre?: string | null
+          fecha_nacimiento_padre?: string | null
+          nombre_madre?: string | null
+          fecha_nacimiento_madre?: string | null
+          familiares_en_usa?: string | null
+          detalles_familiares_usa?: string | null
+          tiene_hijos?: string | null
+          enfermedades_contagiosas?: string | null
+          detalles_enfermedades_contagiosas?: string | null
+          trastorno_mental_fisico?: string | null
+          detalles_trastorno_mental_fisico?: string | null
+          abuso_adiccion_drogas?: string | null
+          detalles_abuso_adiccion_drogas?: string | null
+          arrestos_crimenes?: string | null
+          detalles_arrestos?: string | null
+          sustancias_controladas?: string | null
+          detalles_sustancias_controladas?: string | null
+          prostitucion_trafico?: string | null
+          detalles_prostitucion_trafico?: string | null
+          actividades_terroristas?: string | null
+          detalles_actividades_terroristas?: string | null
+          actividades_espionaje?: string | null
+          detalles_actividades_espionaje?: string | null
+          genocidio_crimenes_guerra?: string | null
+          detalles_genocidio_crimenes_guerra?: string | null
+          inmigracion_irregular?: string | null
+          detalles_inmigracion_irregular?: string | null
+          observaciones_adicionales?: string | null
+          ha_extraviado_visa?: string | null
+          ha_extraviado_pasaporte?: string | null
+          detalles_adicionales?: string | null
+          cita_cas?: string | null
+          ciudad_cita?: string | null
+          trabajos_anteriores?: Json | null
+          informacion_hijos?: Json | null
+          documentos_adjuntos?: string[] | null
+        }
+        Relationships: []
+      }
+      
+      // ========================================================================
+      // TABLA: ds160_step_progress - Progreso por pasos
+      // ========================================================================
+      ds160_step_progress: {
+        Row: {
+          id: number
+          form_id: number
+          step_number: number
+          step_name: string | null
+          completed_at: string
+          step_data: Json | null
+        }
+        Insert: {
+          id?: number
+          form_id: number
+          step_number: number
+          step_name?: string | null
+          completed_at?: string
+          step_data?: Json | null
+        }
+        Update: {
+          id?: number
+          form_id?: number
+          step_number?: number
+          step_name?: string | null
+          completed_at?: string
+          step_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ds160_step_progress_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "ds160_forms"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      
+      // ========================================================================
+      // TABLA: ds160_form_logs - Logs de actividad
+      // ========================================================================
+      ds160_form_logs: {
+        Row: {
+          id: number
+          form_id: number
+          action: string
+          step_number: number | null
+          old_data: Json | null
+          new_data: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          form_id: number
+          action: string
+          step_number?: number | null
+          old_data?: Json | null
+          new_data?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          form_id?: number
+          action?: string
+          step_number?: number | null
+          old_data?: Json | null
+          new_data?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ds160_form_logs_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "ds160_forms"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      
+      // ========================================================================
       // TABLA: form_comments
       // ========================================================================
       form_comments: {
@@ -433,6 +811,27 @@ export interface Database {
           pending_payments: number | null
           active_last_24h: number | null
           comments_last_24h: number | null
+        }
+        Relationships: []
+      }
+      
+      ds160_active_forms: {
+        Row: {
+          id: number | null
+          form_token: string | null
+          client_name: string | null
+          client_email: string | null
+          client_phone: string | null
+          status: string | null
+          payment_status: string | null
+          current_step: number | null
+          progress_percentage: number | null
+          created_at: string | null
+          updated_at: string | null
+          completed_at: string | null
+          days_since_created: number | null
+          days_since_updated: number | null
+          status_display: string | null
         }
         Relationships: []
       }

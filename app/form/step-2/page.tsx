@@ -7,8 +7,10 @@ import { useStepNavigation } from '@/hooks/useStepNavigation'
 import { FormWrapper } from '@/components/form-wrapper'
 import { Input } from '@/components/ui/input'
 import { TextArea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
-import { useEffect } from 'react'
+import { useNotificationModal } from '@/components/notification-modal'
+import { useState, useEffect, Suspense } from 'react'
 
 interface Step2FormData {
   numeroPasaporte: string
@@ -33,6 +35,9 @@ export default function Step2() {
   const router = useRouter()
   const { formData, setCurrentStep } = useDS160Store()
   const { navigateToNextStep, saveDraft } = useStepNavigation()
+  
+  // Hook de notificaciones
+  const { showSuccess, showError, showWarning, NotificationModal } = useNotificationModal()
   
   const { register, handleSubmit, watch, formState: { errors, isValid } } = useForm<Step2FormData>({
     defaultValues: {
@@ -73,7 +78,10 @@ export default function Step2() {
       seisMeses.setMonth(seisMeses.getMonth() + 6)
       
       if (fechaVenc < seisMeses) {
-        alert('⚠️ ADVERTENCIA: El pasaporte debe tener una vigencia mínima de 6 meses.')
+        showWarning(
+          '⚠️ Advertencia sobre vigencia del pasaporte',
+          'El pasaporte debe tener una vigencia mínima de 6 meses a partir de la fecha actual. Por favor, verifique la fecha de vencimiento antes de continuar.'
+        )
       }
     }
   }, [watchFechaVencimiento])
@@ -85,7 +93,10 @@ export default function Step2() {
       await navigateToNextStep(2, data)
     } catch (error) {
       console.error('❌ Error en submit Step 2:', error)
-      alert('Error al procesar el formulario. Por favor, inténtalo de nuevo.')
+      showError(
+        'Error al procesar el formulario',
+        'No se pudo procesar la información del paso 2. Por favor, verifica tus datos e inténtalo de nuevo.'
+      )
     }
   }
 
@@ -94,24 +105,34 @@ export default function Step2() {
       const data = watch()
       const saved = await saveDraft(2, data)
       if (saved) {
-        alert('✅ Borrador guardado exitosamente')
+        showSuccess(
+          '✅ Borrador guardado',
+          'Sus datos del paso 2 han sido guardados exitosamente. Puede continuar más tarde.'
+        )
       } else {
-        alert('❌ Error al guardar el borrador')
+        showError(
+          '❌ Error al guardar',
+          'No se pudo guardar el borrador del paso 2. Verifique su conexión e inténtelo de nuevo.'
+        )
       }
     } catch (error) {
       console.error('❌ Error guardando Step 2:', error)
-      alert('❌ Error al guardar el borrador')
+      showError(
+        '❌ Error al guardar',
+        'Ocurrió un error inesperado al guardar el borrador del paso 2. Inténtelo de nuevo.'
+      )
     }
   }
 
   return (
-    <FormWrapper
-      title="Pasaporte y Contacto"
-      description="Información del pasaporte, domicilio y datos de contacto"
-      onNext={() => handleSubmit(onSubmit)()}
-      onSave={onSave}
-      isValid={isValid}
-    >
+    <>
+      <FormWrapper
+        title="Pasaporte y Contacto"
+        description="Información del pasaporte, domicilio y datos de contacto"
+        onNext={() => handleSubmit(onSubmit)()}
+        onSave={onSave}
+        isValid={isValid}
+      >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         
         {/* Alerta importante sobre vigencia del pasaporte */}
@@ -368,5 +389,9 @@ export default function Step2() {
 
       </form>
     </FormWrapper>
+    
+    {/* Modal de Notificaciones */}
+    <NotificationModal />
+    </>
   )
 }

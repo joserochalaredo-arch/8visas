@@ -9,6 +9,7 @@ import { FormWrapper } from '@/components/form-wrapper'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
+import { useNotificationModal } from '@/components/notification-modal'
 import { useState, useEffect, Suspense } from 'react'
 
 interface Step1FormData {
@@ -27,6 +28,9 @@ function Step1Content() {
   const { formData, setCurrentStep } = useDS160Store()
   const { navigateToNextStep, saveDraft } = useStepNavigation()
   const { login } = useAuthStore()
+  
+  // Hook de notificaciones
+  const { showSuccess, showError, NotificationModal } = useNotificationModal()
   
   const { register, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm<Step1FormData>({
     defaultValues: {
@@ -111,7 +115,10 @@ function Step1Content() {
       await navigateToNextStep(1, data)
     } catch (error) {
       console.error('❌ Error en submit:', error)
-      alert('Error al procesar el formulario. Por favor, inténtalo de nuevo.')
+      showError(
+        'Error al procesar el formulario',
+        'No se pudo procesar la información del formulario. Por favor, verifica tus datos e inténtalo de nuevo.'
+      )
     }
   }
 
@@ -120,13 +127,22 @@ function Step1Content() {
       const data = watch()
       const saved = await saveDraft(1, data)
       if (saved) {
-        alert('✅ Borrador guardado exitosamente')
+        showSuccess(
+          '✅ Borrador guardado',
+          'Sus datos han sido guardados exitosamente. Puede continuar más tarde.'
+        )
       } else {
-        alert('❌ Error al guardar el borrador')
+        showError(
+          '❌ Error al guardar',
+          'No se pudo guardar el borrador. Verifique su conexión e inténtelo de nuevo.'
+        )
       }
     } catch (error) {
       console.error('❌ Error guardando:', error)
-      alert('❌ Error al guardar el borrador')
+      showError(
+        '❌ Error al guardar',
+        'Ocurrió un error inesperado al guardar el borrador. Inténtelo de nuevo.'
+      )
     }
   }
 
@@ -338,6 +354,9 @@ function Step1Content() {
 
         </form>
       </FormWrapper>
+
+      {/* Modal de Notificaciones */}
+      <NotificationModal />
     </div>
   )
 }

@@ -1,30 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server'
-import mysql from 'mysql2/promise'
+import { supabase } from '@/lib/supabase'
 
-// Configuración de la base de datos
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'a8visas_ds160',
-  port: parseInt(process.env.DB_PORT || '3306')
-}
-
-// Función para crear conexión a la base de datos
-async function createConnection() {
-  try {
-    const connection = await mysql.createConnection(dbConfig)
-    return connection
-  } catch (error) {
-    console.error('Error conectando a la base de datos:', error)
-    throw error
-  }
-}
-
-// POST - Crear o actualizar formulario DS-160
-export async function POST(request: NextRequest) {
-  let connection: mysql.Connection | null = null
+// Función para mapear datos del formulario a la estructura de Supabase
+function mapFormDataToSupabase(formData: any) {
+  const mappedData: any = {}
   
+  // Mapeo de campos del formulario a la tabla ds160_forms
+  if (formData?.nombreCompleto) mappedData.nombre_completo = formData.nombreCompleto
+  if (formData?.fechaNacimiento) mappedData.fecha_nacimiento = formData.fechaNacimiento
+  if (formData?.ciudadEstadoPaisNacimiento) mappedData.ciudad_nacimiento = formData.ciudadEstadoPaisNacimiento
+  if (formData?.otraNacionalidad) mappedData.otra_nacionalidad = formData.otraNacionalidad === 'SI' ? 'SI' : 'NO'
+  if (formData?.consuladoDeseado) mappedData.consulado_deseado = formData.consuladoDeseado
+  if (formData?.oficinaCAS) mappedData.oficina_cas = formData.oficinaCAS
+  
+  // Información del pasaporte
+  if (formData?.numeroPasaporte) mappedData.numero_pasaporte = formData.numeroPasaporte
+  if (formData?.fechaExpedicion) mappedData.fecha_expedicion = formData.fechaExpedicion
+  if (formData?.fechaVencimiento) mappedData.fecha_vencimiento = formData.fechaVencimiento
+  
+  // Información de contacto
+  if (formData?.domicilioCasa || formData?.domicilio) mappedData.domicilio_casa = formData.domicilioCasa || formData.domicilio
+  if (formData?.telefonoCasa) mappedData.telefono_casa = formData.telefonoCasa
+  if (formData?.celular) mappedData.celular = formData.celular
+  if (formData?.correoElectronico) mappedData.correo_electronico = formData.correoElectronico
+  if (formData?.estadoCivil) mappedData.estado_civil = formData.estadoCivil
+  
+  // Información laboral
+  if (formData?.ocupacionActual || formData?.puestoDesempenado) {
+    mappedData.ocupacion_actual = formData.ocupacionActual || formData.puestoDesempenado
+  }
+  if (formData?.nombreEmpresa || formData?.empleador) {
+    mappedData.empleador = formData.nombreEmpresa || formData.empleador
+  }
+  if (formData?.salarioMensualAproximado) {
+    const salario = formData.salarioMensualAproximado.replace(/[^\d.]/g, '')
+    if (salario && !isNaN(parseFloat(salario))) {
+      mappedData.salario_mensual = parseFloat(salario)
+    }
+  }
+  if (formData?.domicilioEmpresa || formData?.direccionTrabajo) {
+    mappedData.direccion_trabajo = formData.domicilioEmpresa || formData.direccionTrabajo
+  }
+  if (formData?.telefonoEmpresa || formData?.telefonoTrabajo) {
+    mappedData.telefono_trabajo = formData.telefonoEmpresa || formData.telefonoTrabajo
+  }
+  
+  // Información de viaje
+  if (formData?.fechaLlegadaUSA || formData?.fechaLlegada) {
+    mappedData.fecha_llegada = formData.fechaLlegadaUSA || formData.fechaLlegada
+  }
+  if (formData?.duracionEstanciaUSA || formData?.duracionEstancia) {
+    mappedData.duracion_estancia = formData.duracionEstanciaUSA || formData.duracionEstancia
+  }
+  if (formData?.hotelDomicilio || formData?.direccionUSA) {
+    mappedData.direccion_usa = formData.hotelDomicilio || formData.direccionUSA
+  }
+  
+  // Información familiar
+  if (formData?.apellidoNombrePadre || formData?.nombrePadre) {
+    mappedData.nombre_padre = formData.apellidoNombrePadre || formData.nombrePadre
+  }
+  if (formData?.fechaNacimientoPadre) mappedData.fecha_nacimiento_padre = formData.fechaNacimientoPadre
+  if (formData?.apellidoNombreMadre || formData?.nombreMadre) {
+    mappedData.nombre_madre = formData.apellidoNombreMadre || formData.nombreMadre
+  }
+  if (formData?.fechaNacimientoMadre) mappedData.fecha_nacimiento_madre = formData.fechaNacimientoMadre
+  
+  // Información de viajes anteriores
+  if (formData?.haVisitadoUSA) mappedData.ha_visitado_usa = formData.haVisitadoUSA === 'SI' ? 'SI' : 'NO'
+  if (formData?.fechasVisitasAnteriores) mappedData.fechas_visitas_anteriores = formData.fechasVisitasAnteriores
+  
+  // Preguntas de seguridad
+  if (formData?.arrestosCrimenes) mappedData.arrestos_crimenes = formData.arrestosCrimenes === 'SI' ? 'SI' : 'NO'
+  if (formData?.detallesArrestos) mappedData.detalles_arrestos = formData.detallesArrestos
+  if (formData?.leHanNegadoVisa) mappedData.le_han_negado_visa = formData.leHanNegadoVisa === 'SI' ? 'SI' : 'NO'
+  if (formData?.haExtraviadoVisa) mappedData.ha_extraviado_visa = formData.haExtraviadoVisa === 'SI' ? 'SI' : 'NO'
+  if (formData?.haExtraviadoPasaporte) mappedData.ha_extraviado_pasaporte = formData.haExtraviadoPasaporte === 'SI' ? 'SI' : 'NO'
+  
+  return mappedData
+}
+
+// POST - Crear o actualizar formulario DS-160 en Supabase
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { 
@@ -36,210 +93,160 @@ export async function POST(request: NextRequest) {
       formData 
     } = body
 
-    console.log('📝 Guardando formulario DS-160:', { formToken, clientName, currentStep })
+    console.log('📝 DEBUGGING API DS-160 - Datos recibidos:', { 
+      formToken, 
+      clientName, 
+      clientEmail, 
+      currentStep, 
+      formData,
+      stepData 
+    })
+    
+    console.log('📝 Guardando formulario DS-160 en Supabase:', { formToken, clientName, currentStep })
 
-    connection = await createConnection()
+    // Verificar si el formulario existe en Supabase
+    console.log('🔍 Verificando si existe formulario con token:', formToken)
+    const { data: existingForm, error: selectError } = await supabase
+      .from('ds160_forms')
+      .select('id')
+      .eq('form_token', formToken)
+      .single()
 
-    // Verificar si el formulario existe
-    const [existing] = await connection.execute(
-      'SELECT id FROM ds160_forms WHERE form_token = ?',
-      [formToken]
-    )
+    if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = No rows found
+      console.error('❌ Error verificando formulario existente:', selectError)
+      throw selectError
+    }
 
-    let formId: number
+    console.log('📋 Formulario existente encontrado:', existingForm ? 'SÍ' : 'NO')
 
-    if ((existing as any[]).length > 0) {
+    // Mapear datos del formulario
+    const mappedData = mapFormDataToSupabase(formData || {})
+    
+    // Determinar status según el paso
+    const status = currentStep === 7 ? 'completed' : 
+                  currentStep > 1 ? 'in_progress' : 'draft'
+    
+    // Calcular progreso
+    const progress = currentStep ? Math.round((currentStep / 7) * 100) : 0
+
+    let formId: string
+
+    if (existingForm) {
       // Actualizar formulario existente
-      formId = (existing as any[])[0].id
+      formId = existingForm.id.toString()
       
-      const updateFields = []
-      const updateValues = []
-
-      // Campos básicos
-      updateFields.push('updated_at = CURRENT_TIMESTAMP')
-      updateFields.push('current_step = ?')
-      updateValues.push(currentStep)
-
-      // Datos del Step 1
-      if (formData?.nombreCompleto) {
-        updateFields.push('nombre_completo = ?')
-        updateValues.push(formData.nombreCompleto)
-      }
-      if (formData?.fechaNacimiento) {
-        updateFields.push('fecha_nacimiento = ?')
-        updateValues.push(formData.fechaNacimiento)
-      }
-      if (formData?.ciudadEstadoPaisNacimiento) {
-        updateFields.push('ciudad_estado_pais_nacimiento = ?')
-        updateValues.push(formData.ciudadEstadoPaisNacimiento)
-      }
-      if (formData?.otraNacionalidad) {
-        updateFields.push('otra_nacionalidad = ?')
-        updateValues.push(formData.otraNacionalidad)
-      }
-      if (formData?.especificarNacionalidad) {
-        updateFields.push('especificar_nacionalidad = ?')
-        updateValues.push(formData.especificarNacionalidad)
-      }
-      if (formData?.consuladoDeseado) {
-        updateFields.push('consulado_deseado = ?')
-        updateValues.push(formData.consuladoDeseado)
-      }
-      if (formData?.oficinaCAS) {
-        updateFields.push('oficina_cas = ?')
-        updateValues.push(formData.oficinaCAS)
+      const updateData = {
+        ...mappedData,
+        current_step: currentStep,
+        status: status,
+        progress_percentage: progress,
+        updated_at: new Date().toISOString(),
+        ...(status === 'completed' && { completed_at: new Date().toISOString() })
       }
 
-      // Datos del Step 2
-      if (formData?.numeroPasaporte) {
-        updateFields.push('numero_pasaporte = ?')
-        updateValues.push(formData.numeroPasaporte)
-      }
-      if (formData?.fechaExpedicion) {
-        updateFields.push('fecha_expedicion = ?')
-        updateValues.push(formData.fechaExpedicion)
-      }
-      if (formData?.fechaVencimiento) {
-        updateFields.push('fecha_vencimiento = ?')
-        updateValues.push(formData.fechaVencimiento)
-      }
-      if (formData?.ciudadExpedicion) {
-        updateFields.push('ciudad_expedicion = ?')
-        updateValues.push(formData.ciudadExpedicion)
-      }
-      if (formData?.domicilio) {
-        updateFields.push('domicilio_casa = ?')
-        updateValues.push(formData.domicilio)
-      }
-      if (formData?.telefonoCasa) {
-        updateFields.push('telefono_casa = ?')
-        updateValues.push(formData.telefonoCasa)
-      }
-      if (formData?.celular) {
-        updateFields.push('celular = ?')
-        updateValues.push(formData.celular)
-      }
-      if (formData?.correoElectronico) {
-        updateFields.push('correo_electronico = ?')
-        updateValues.push(formData.correoElectronico)
-      }
-      if (formData?.otrosNumeros) {
-        updateFields.push('ha_utilizado_otros_numeros = ?')
-        updateValues.push(formData.otrosNumeros)
-      }
-      if (formData?.listaNumeros) {
-        updateFields.push('lista_otros_numeros = ?')
-        updateValues.push(formData.listaNumeros)
-      }
-      if (formData?.correosAdicionales) {
-        updateFields.push('correos_adicionales = ?')
-        updateValues.push(formData.correosAdicionales)
-      }
-      if (formData?.redesSociales) {
-        updateFields.push('redes_sociales = ?')
-        updateValues.push(formData.redesSociales)
-      }
-      if (formData?.plataformasAdicionales) {
-        updateFields.push('plataformas_adicionales = ?')
-        updateValues.push(formData.plataformasAdicionales)
-      }
-      if (formData?.listaPlataformas) {
-        updateFields.push('lista_plataformas_adicionales = ?')
-        updateValues.push(formData.listaPlataformas)
-      }
-      if (formData?.idiomas) {
-        updateFields.push('idiomas = ?')
-        updateValues.push(formData.idiomas)
-      }
-      if (formData?.estadoCivil) {
-        updateFields.push('estado_civil = ?')
-        updateValues.push(formData.estadoCivil)
+      console.log('🔄 Actualizando formulario existente con datos:', updateData)
+      
+      const { error: updateError } = await supabase
+        .from('ds160_forms')
+        .update(updateData)
+        .eq('form_token', formToken)
+
+      if (updateError) {
+        console.error('❌ Error actualizando formulario:', updateError)
+        throw updateError
       }
 
-      // Status según el paso
-      const status = currentStep === 7 ? 'completed' : 
-                    currentStep > 1 ? 'in_progress' : 'draft'
-      updateFields.push('status = ?')
-      updateValues.push(status)
-
-      updateValues.push(formToken) // Para el WHERE
-
-      const updateQuery = `
-        UPDATE ds160_forms 
-        SET ${updateFields.join(', ')}
-        WHERE form_token = ?
-      `
-
-      await connection.execute(updateQuery, updateValues)
+      console.log('✅ Formulario actualizado exitosamente en Supabase')
       
     } else {
       // Crear nuevo formulario
-      const insertQuery = `
-        INSERT INTO ds160_forms (
-          form_token, client_name, client_email, current_step, status,
-          nombre_completo, fecha_nacimiento, ciudad_estado_pais_nacimiento,
-          otra_nacionalidad, especificar_nacionalidad, consulado_deseado, oficina_cas
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `
+      const insertData = {
+        form_token: formToken,
+        client_name: clientName,
+        client_email: clientEmail || null,
+        current_step: currentStep || 1,
+        status: status,
+        progress_percentage: progress,
+        payment_status: 'pending',
+        ...mappedData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...(status === 'completed' && { completed_at: new Date().toISOString() })
+      }
+
+      console.log('🆕 Creando nuevo formulario con datos:', insertData)
       
-      const status = currentStep > 1 ? 'in_progress' : 'draft'
-      
-      const [result] = await connection.execute(insertQuery, [
-        formToken,
-        clientName,
-        clientEmail,
-        currentStep,
-        status,
-        formData?.nombreCompleto || null,
-        formData?.fechaNacimiento || null,
-        formData?.ciudadEstadoPaisNacimiento || null,
-        formData?.otraNacionalidad || 'NO',
-        formData?.especificarNacionalidad || null,
-        formData?.consuladoDeseado || null,
-        formData?.oficinaCAS || null
-      ])
-      
-      formId = (result as any).insertId
+      const { data: newForm, error: insertError } = await supabase
+        .from('ds160_forms')
+        .insert(insertData)
+        .select('id')
+        .single()
+
+      if (insertError) {
+        console.error('❌ Error creando formulario:', insertError)
+        console.error('❌ Detalles del error:', insertError.message)
+        throw insertError
+      }
+
+      formId = newForm.id.toString()
+      console.log('✅ Nuevo formulario creado exitosamente en Supabase con ID:', formId)
     }
 
     // Guardar progreso del paso específico
     if (stepData && currentStep) {
-      await connection.execute(
-        `INSERT INTO ds160_step_progress (form_id, step_number, step_data)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE 
-         step_data = VALUES(step_data),
-         completed_at = CURRENT_TIMESTAMP`,
-        [formId, currentStep, JSON.stringify(stepData)]
-      )
+      const { error: progressError } = await supabase
+        .from('ds160_step_progress')
+        .upsert({
+          form_id: parseInt(formId),
+          step_number: currentStep,
+          step_data: stepData,
+          completed_at: new Date().toISOString()
+        }, {
+          onConflict: 'form_id,step_number'
+        })
+
+      if (progressError) {
+        console.warn('Error guardando progreso del paso:', progressError)
+        // No lanzamos error aquí para no bloquear el guardado principal
+      }
     }
 
-    console.log('✅ Formulario guardado exitosamente')
+    // Crear registro en logs
+    try {
+      await supabase
+        .from('ds160_form_logs')
+        .insert({
+          form_id: parseInt(formId),
+          action: existingForm ? 'updated' : 'created',
+          step_number: currentStep,
+          new_data: { step: currentStep, data: stepData },
+          created_at: new Date().toISOString()
+        })
+    } catch (logError) {
+      console.warn('Error creando log:', logError)
+      // Los logs son opcionales, no bloqueamos por esto
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Formulario guardado exitosamente',
-      formId
+      message: 'Formulario guardado exitosamente en Supabase',
+      formId,
+      progress,
+      status
     })
 
   } catch (error) {
-    console.error('❌ Error guardando formulario:', error)
+    console.error('❌ Error guardando formulario en Supabase:', error)
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor',
       details: error instanceof Error ? error.message : 'Error desconocido'
     }, { status: 500 })
-  } finally {
-    if (connection) {
-      await connection.end()
-    }
   }
 }
 
-// GET - Obtener datos del formulario
+// GET - Obtener datos del formulario desde Supabase
 export async function GET(request: NextRequest) {
-  let connection: mysql.Connection | null = null
-  
   try {
     const { searchParams } = new URL(request.url)
     const formToken = searchParams.get('token')
@@ -251,52 +258,55 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    connection = await createConnection()
+    console.log('🔍 Obteniendo formulario DS-160:', formToken)
 
-    // Obtener datos principales del formulario
-    const [formRows] = await connection.execute(
-      'SELECT * FROM ds160_forms WHERE form_token = ?',
-      [formToken]
-    )
+    // Obtener datos principales del formulario desde Supabase
+    const { data: formData, error: formError } = await supabase
+      .from('ds160_forms')
+      .select('*')
+      .eq('form_token', formToken)
+      .single()
 
-    const forms = formRows as any[]
-    if (forms.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Formulario no encontrado'
-      }, { status: 404 })
+    if (formError) {
+      if (formError.code === 'PGRST116') {
+        return NextResponse.json({
+          success: false,
+          error: 'Formulario no encontrado'
+        }, { status: 404 })
+      }
+      
+      console.error('Error obteniendo formulario:', formError)
+      throw formError
     }
 
-    const formData = forms[0]
-
     // Obtener progreso de pasos
-    const [progressRows] = await connection.execute(
-      `SELECT step_number, step_data, completed_at 
-       FROM ds160_step_progress 
-       WHERE form_id = ? 
-       ORDER BY step_number`,
-      [formData.id]
-    )
+    const { data: stepProgress, error: progressError } = await supabase
+      .from('ds160_step_progress')
+      .select('step_number, step_data, completed_at')
+      .eq('form_id', formData.id)
+      .order('step_number')
 
-    const stepProgress = progressRows as any[]
+    if (progressError) {
+      console.warn('Error obteniendo progreso de pasos:', progressError)
+      // Continuamos sin el progreso de pasos si hay error
+    }
+
+    console.log('✅ Formulario obtenido exitosamente')
 
     return NextResponse.json({
       success: true,
       data: {
         ...formData,
-        stepProgress
+        stepProgress: stepProgress || []
       }
     })
 
   } catch (error) {
-    console.error('❌ Error obteniendo formulario:', error)
+    console.error('❌ Error obteniendo formulario desde Supabase:', error)
     return NextResponse.json({
       success: false,
-      error: 'Error interno del servidor'
+      error: 'Error interno del servidor',
+      details: error instanceof Error ? error.message : 'Error desconocido'
     }, { status: 500 })
-  } finally {
-    if (connection) {
-      await connection.end()
-    }
   }
 }

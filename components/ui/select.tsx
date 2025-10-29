@@ -88,11 +88,11 @@ const SelectContent = ({ children }: SelectContentProps) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40"
+        className="fixed inset-0 z-[9998]"
         onClick={() => setIsOpen(false)}
       />
       {/* Dropdown */}
-      <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border border-gray-300 bg-white shadow-lg">
+      <div className="absolute top-full left-0 right-0 z-[9999] mt-1 max-h-60 overflow-auto rounded-md border border-gray-300 bg-white shadow-lg">
         <div className="p-1">
           {children}
         </div>

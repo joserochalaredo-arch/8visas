@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Connection - DS160</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #005a87; }
+        .result { background: #f5f5f5; padding: 10px; margin-top: 10px; border-radius: 3px; white-space: pre-wrap; }
+        .success { border-left: 4px solid #4CAF50; }
+        .error { border-left: 4px solid #f44336; }
+        .warning { border-left: 4px solid #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test Admin Connection - DS160 System</h1>
+        
+        <div class="test-section">
+            <h3>📊 Test 1: Verificar conexión con Supabase</h3>
+            <p>Prueba la conexión directa con la base de datos desde el navegador</p>
+            <button onclick="testSupabaseConnection()">Probar Conexión Supabase</button>
+            <div id="supabase-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🗂️ Test 2: Consultar datos desde tabla ds160_forms</h3>
+            <p>Consulta directa a la tabla principal de formularios</p>
+            <button onclick="queryDirectTable()">Consultar Tabla Directa</button>
+            <div id="table-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>👁️ Test 3: Consultar datos desde vista ds160_active_forms</h3>
+            <p>Consulta usando la vista que el dashboard usaba originalmente</p>
+            <button onclick="queryActiveFormsView()">Consultar Vista</button>
+            <div id="view-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 Test 4: Simular consulta del hook useAdminSupabase</h3>
+            <p>Replica la consulta exacta que hace el dashboard admin</p>
+            <button onclick="simulateAdminHook()">Simular Hook Admin</button>
+            <div id="hook-result" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de Supabase (usar las mismas variables que el proyecto)
+        const SUPABASE_URL = 'https://cvzrlqyvvhpyrqjyfzqf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2enJscXl2dmhweXJxanlmenFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk5NzA1MjIsImV4cCI6MjA0NTU0NjUyMn0.qzjJG_uVByJMq0BIKqcawxz1Z7CqOUgL3ErcaIjbe3c';
+
+        function showResult(elementId, content, type = 'success') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${type}`;
+            element.textContent = content;
+        }
+
+        async function testSupabaseConnection() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (response.ok) {
+                    showResult('supabase-result', `✅ Conexión exitosa a Supabase
+Status: ${response.status}
+URL: ${SUPABASE_URL}
+Timestamp: ${new Date().toLocaleString()}`, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showResult('supabase-result', `❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        async function queryDirectTable() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/ds160_forms?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('table-result', `✅ Consulta exitosa a ds160_forms
+Total registros: ${data.length}
+
+Datos encontrados:
+${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                showResult('table-result', `❌ Error consultando tabla: ${error.message}`, 'error');
+            }
+        }
+
+        async function queryActiveFormsView() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/ds160_active_forms?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('view-result', `✅ Consulta exitosa a ds160_active_forms
+Total registros: ${data.length}
+
+Datos encontrados:
+${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                showResult('view-result', `❌ Error consultando vista: ${error.message}`, 'error');
+            }
+        }
+
+        async function simulateAdminHook() {
+            try {
+                // Simula la consulta que hace el hook useAdminSupabase
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/ds160_forms?select=form_token,client_name,client_email,current_step,status,created_at,updated_at,form_data&order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('hook-result', `✅ Simulación hook admin exitosa
+Total clientes: ${data.length}
+
+Estructura de datos como la vería el dashboard:
+${JSON.stringify(data.map(item => ({
+    token: item.form_token,
+    nombre: item.client_name,
+    email: item.client_email,
+    paso: item.current_step,
+    estado: item.status,
+    creado: item.created_at,
+    actualizado: item.updated_at
+})), null, 2)}`, 'success');
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                showResult('hook-result', `❌ Error simulando hook: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-ejecutar primer test
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔍 Test Admin Connection cargado');
+            console.log('Configuración Supabase:', { url: SUPABASE_URL });
+        });
+    </script>
+</body>
+</html>

@@ -1,13 +1,15 @@
 'use client'
 
 import { useForm } from 'react-hook-form'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useDS160Store } from '@/store/ds160-store'
 import { useStepNavigation } from '@/hooks/useStepNavigation'
+import { useFormPersistence } from '@/hooks/use-form-persistence'
 import { Input } from '@/components/ui/input'
 import { TextArea } from '@/components/ui/textarea'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
 import { Button } from '@/components/ui/button'
+import { useNotificationModal } from '@/components/notification-modal'
 import { useEffect, useState } from 'react'
 
 // Interface completa para todo el formulario DS-160
@@ -135,9 +137,22 @@ interface CompleteDS160FormData {
 
 export default function CompleteDS160Form() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token')
+  
   const { formData, setCurrentStep } = useDS160Store()
   const { saveDraft } = useStepNavigation()
+  const { isLoading: formLoading, isLoaded } = useFormPersistence(token)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Hook de notificaciones
+  const { 
+    showSuccess, 
+    showError, 
+    showWarning, 
+    showInfo, 
+    NotificationModal 
+  } = useNotificationModal()
   
   const { register, handleSubmit, watch, formState: { errors, isValid } } = useForm<CompleteDS160FormData>({
     defaultValues: {
@@ -291,7 +306,10 @@ export default function CompleteDS160Form() {
       seisMeses.setMonth(seisMeses.getMonth() + 6)
       
       if (fechaVenc < seisMeses) {
-        alert('⚠️ ADVERTENCIA: El pasaporte debe tener una vigencia mínima de 6 meses.')
+        showWarning(
+          '⚠️ Advertencia sobre vigencia del pasaporte',
+          'El pasaporte debe tener una vigencia mínima de 6 meses a partir de la fecha actual. Por favor, verifique la fecha de vencimiento.'
+        )
       }
     }
   }, [watchFechaVencimiento])
@@ -304,11 +322,41 @@ export default function CompleteDS160Form() {
       // Guardar todos los datos
       await saveDraft(7, data) // Marcar como paso 7 (completado)
       
-      alert('✅ Formulario DS-160 enviado exitosamente!')
-      router.push('/admin/dashboard')
+      // Mostrar mensaje de éxito
+      const successMessage = isClientAccess 
+        ? `Ha completado todo el formulario DS-160 correctamente.
+
+✅ Sus datos han sido guardados de forma segura
+📋 El formulario está listo para generar el PDF
+📞 Nos pondremos en contacto con usted para continuar con el proceso
+
+¡Gracias por usar A8Visas!`
+        : `Ha completado todo el formulario DS-160 correctamente.
+
+✅ Sus datos han sido guardados de forma segura
+📋 El formulario está listo para generar el PDF
+📧 Puede descargar su documento desde el panel principal
+
+¡Gracias por usar A8Visas!`
+
+      showSuccess(
+        '🎉 ¡FORMULARIO COMPLETADO EXITOSAMENTE!',
+        successMessage
+      )
+      
+      // Redirigir solo si es admin, si es cliente mostrar mensaje de finalización
+      if (!isClientAccess) {
+        router.push('/admin/dashboard')
+      }
     } catch (error) {
       console.error('❌ Error enviando formulario:', error)
-      alert('❌ Error al enviar el formulario. Por favor, inténtalo de nuevo.')
+      showError(
+        '❌ Error al enviar el formulario',
+        `Ocurrió un problema al guardar sus datos.
+Por favor, inténtalo de nuevo o contacte al soporte técnico.
+
+Detalles: ${error instanceof Error ? error.message : 'Error desconocido'}`
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -319,18 +367,53 @@ export default function CompleteDS160Form() {
       const data = watch()
       const saved = await saveDraft(1, data) // Guardar como borrador
       if (saved) {
-        alert('✅ Borrador guardado exitosamente')
+        showSuccess(
+          '💾 Borrador guardado exitosamente',
+          `✅ Todos sus datos han sido guardados de forma segura
+🔄 Puede continuar llenando el formulario más tarde
+📋 Su progreso se mantiene guardado automáticamente
+
+Puede cerrar esta página y regresar cuando guste para continuar.`
+        )
       } else {
-        alert('❌ Error al guardar el borrador')
+        showError(
+          '❌ Error al guardar el borrador',
+          `No se pudieron guardar los datos. 
+Por favor, verifique su conexión a internet e inténtelo de nuevo.`
+        )
       }
     } catch (error) {
       console.error('❌ Error guardando:', error)
-      alert('❌ Error al guardar el borrador')
+      showError(
+        '❌ Error al guardar el borrador',
+        `Detalles técnicos: ${error instanceof Error ? error.message : 'Error desconocido'}
+      
+Por favor, contacte al soporte técnico si el problema persiste.`
+      )
     }
   }
 
   const handleBackToMenu = () => {
     router.push('/admin/dashboard')
+  }
+
+  // Verificar si es acceso de cliente (con token) o admin (sin token)
+  const isClientAccess = !!token
+
+  // Mostrar loading mientras se cargan los datos
+  if (formLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Cargando formulario DS-160</h2>
+          <p className="text-gray-600">Recuperando sus datos guardados...</p>
+          {token && (
+            <p className="text-sm text-gray-500 mt-2">Token: {token}</p>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -343,11 +426,19 @@ export default function CompleteDS160Form() {
               <div className="flex items-center space-x-3">
                 <div>
                   <h1 className="text-2xl font-bold text-primary-900">
-                    A8Visas - Formulario DS-160 Completo
+                    {isClientAccess ? 'Formulario DS-160 - Visa Americana' : 'A8Visas - Formulario DS-160 Completo'}
                   </h1>
                   <p className="text-sm text-gray-600">
-                    Complete todo el formulario scrolleando hacia abajo
+                    {isClientAccess 
+                      ? 'Complete todos los campos del formulario para su trámite de visa'
+                      : 'Complete todo el formulario scrolleando hacia abajo'
+                    }
                   </p>
+                  {isLoaded && (
+                    <p className="text-xs text-green-600 mt-1">
+                      ✅ Datos anteriores cargados correctamente
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -360,14 +451,16 @@ export default function CompleteDS160Form() {
                 >
                   💾 Guardar Borrador
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleBackToMenu}
-                  className="flex items-center"
-                >
-                  ← Menú Principal
-                </Button>
+                {!isClientAccess && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBackToMenu}
+                    className="flex items-center"
+                  >
+                    ← Menú Principal
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -1671,6 +1764,9 @@ export default function CompleteDS160Form() {
           </div>
         </div>
       </footer>
+
+      {/* Modal de Notificaciones */}
+      <NotificationModal />
     </div>
   )
 }

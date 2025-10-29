@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
-import { useAdminStore } from '@/store/admin-store'
+import { useAdminSupabase } from '@/hooks/use-admin-supabase'
 import ClientLogin from '@/components/client-login'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
@@ -27,26 +27,50 @@ import {
 export default function HomePage() {
   const router = useRouter()
   const { isAuthenticated, logout } = useAuthStore()
-  const { adminLogin } = useAdminStore()
+  const { adminLogin } = useAdminSupabase()
   const [showAuth, setShowAuth] = useState(false)
   const [showAdminModal, setShowAdminModal] = useState(false)
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' })
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false)
 
-  const handleAdminLogin = () => {
-    // Credenciales simples para acceso de admin
-    if (adminCredentials.username === 'almita1982' && adminCredentials.password === 'Oziel2002') {
-      // Usar el sistema de login del admin store con la contraseña correcta
-      const loginSuccess = adminLogin('admin123')
-      if (loginSuccess) {
-        setShowAdminModal(false)
-        setAdminCredentials({ username: '', password: '' })
-        router.push('/admin')
+  const handleAdminLogin = async () => {
+    console.log('🔑 Modal Admin Login - Credenciales ingresadas:', adminCredentials)
+    
+    setAdminLoginLoading(true)
+    
+    try {
+      // Credenciales simples para acceso de admin
+      if (adminCredentials.username === 'almita1982' && adminCredentials.password === 'Oziel2002') {
+        console.log('✅ Credenciales del modal correctas, procediendo con login admin...')
+        
+        // Usar el sistema de login del admin con Supabase
+        const loginSuccess = adminLogin('admin123')
+        
+        console.log('🔍 Resultado del login admin:', loginSuccess)
+        
+        if (loginSuccess) {
+          console.log('✅ Login admin exitoso desde modal, cerrando modal y redirigiendo...')
+          setShowAdminModal(false)
+          setAdminCredentials({ username: '', password: '' })
+          
+          // Ir directamente al dashboard después del login exitoso
+          setTimeout(() => {
+            router.push('/admin/dashboard')
+          }, 100)
+        } else {
+          console.error('❌ Error en login admin desde modal')
+          alert('Error interno del sistema')
+        }
       } else {
-        alert('Error interno del sistema')
+        console.warn('⚠️ Credenciales del modal incorrectas')
+        alert('Usuario o contraseña incorrectos')
+        setAdminCredentials({ username: '', password: '' })
       }
-    } else {
-      alert('Usuario o contraseña incorrectos')
-      setAdminCredentials({ username: '', password: '' })
+    } catch (error) {
+      console.error('❌ Error en handleAdminLogin:', error)
+      alert('Error inesperado en el login')
+    } finally {
+      setAdminLoginLoading(false)
     }
   }
 
@@ -549,8 +573,21 @@ export default function HomePage() {
                   onChange={(e) => setAdminCredentials({...adminCredentials, password: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Ingrese su contraseña"
-                  onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  onKeyPress={(e) => e.key === 'Enter' && !adminLoginLoading && handleAdminLogin()}
+                  disabled={adminLoginLoading}
                 />
+              </div>
+              
+              {/* Botón de auto-completar para desarrollo */}
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setAdminCredentials({ username: 'almita1982', password: 'Oziel2002' })}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                  disabled={adminLoginLoading}
+                >
+                  🔧 Auto-completar credenciales (desarrollo)
+                </button>
               </div>
               
               <div className="flex space-x-3 pt-4">
@@ -558,14 +595,23 @@ export default function HomePage() {
                   onClick={() => setShowAdminModal(false)}
                   variant="outline"
                   className="flex-1"
+                  disabled={adminLoginLoading}
                 >
                   Cancelar
                 </Button>
                 <Button
                   onClick={handleAdminLogin}
-                  className="flex-1 bg-primary-600 hover:bg-primary-700"
+                  className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={adminLoginLoading || !adminCredentials.username.trim() || !adminCredentials.password.trim()}
                 >
-                  Ingresar
+                  {adminLoginLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Ingresando...
+                    </div>
+                  ) : (
+                    'Ingresar'
+                  )}
                 </Button>
               </div>
             </div>

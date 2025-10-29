@@ -2,20 +2,35 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAdminSupabase } from '@/hooks/use-admin-supabase'
 
 export default function AdminPage() {
   const router = useRouter()
+  const { isAdminAuthenticated } = useAdminSupabase()
+  
+  console.log('🔄 AdminPage - Redirigiendo. Estado auth:', { isAdminAuthenticated })
 
   useEffect(() => {
-    // Redirigir automáticamente al dashboard sin pedir autenticación adicional
-    router.push('/admin/dashboard')
-  }, [router])
+    // Si ya está autenticado, ir al dashboard
+    if (isAdminAuthenticated) {
+      console.log('✅ Ya autenticado, redirigiendo a dashboard...')
+      router.push('/admin/dashboard')
+    } else {
+      // Si no está autenticado, redirigir al home donde está el modal
+      console.log('❌ No autenticado, redirigiendo a home para usar modal...')
+      router.push('/')
+    }
+  }, [isAdminAuthenticated, router])
 
+  // Mostrar loading mientras redirecciona
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Accediendo al panel de administración...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="mt-4 text-gray-600">Redirigiendo...</p>
+        <p className="mt-2 text-sm text-gray-500">
+          El login de admin ahora se realiza desde el modal en la página principal
+        </p>
       </div>
     </div>
   )
