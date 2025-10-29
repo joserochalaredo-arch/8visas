@@ -13,7 +13,7 @@ interface Step3FormData {
 
 export default function Step3() {
   const router = useRouter()
-  const { setCurrentStep } = useDS160Store()
+  const { setCurrentStep, formData } = useDS160Store()
   const { saveDraft } = useStepNavigation()
   
   const { handleSubmit, getValues, formState: { isValid } } = useForm<Step3FormData>({
@@ -47,6 +47,7 @@ export default function Step3() {
       onNext={() => handleSubmit(onSubmit)()}
       onSave={onSave}
       isValid={true}
+      clientFullName={formData.nombreCompleto}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         

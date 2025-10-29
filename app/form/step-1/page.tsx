@@ -46,6 +46,7 @@ function Step1Content() {
   })
 
   const watchOtraNacionalidad = watch('otraNacionalidad')
+  const watchNombreCompleto = watch('nombreCompleto')
 
   useEffect(() => {
     setCurrentStep(1)
@@ -159,6 +160,7 @@ function Step1Content() {
         onSave={onSave}
         onBackToMenu={handleBackToMenu}
         isValid={isValid}
+        clientFullName={watchNombreCompleto}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           

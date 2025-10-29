@@ -132,6 +132,7 @@ export default function Step2() {
         onNext={() => handleSubmit(onSubmit)()}
         onSave={onSave}
         isValid={isValid}
+        clientFullName={formData.nombreCompleto}
       >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         

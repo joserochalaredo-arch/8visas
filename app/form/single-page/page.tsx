@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useDS160Store } from '@/store/ds160-store'
+import { useAdminStore } from '@/store/admin-store'
 import { useStepNavigation } from '@/hooks/useStepNavigation'
 import { useFormPersistence } from '@/hooks/use-form-persistence'
 import { Input } from '@/components/ui/input'
@@ -142,6 +143,7 @@ export default function CompleteDS160Form() {
   const token = searchParams.get('token')
   
   const { formData, setCurrentStep } = useDS160Store()
+  const { getClientByToken } = useAdminStore()
   const { saveDraft } = useStepNavigation()
   const { isLoading: formLoading, isLoaded } = useFormPersistence(token)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -158,7 +160,7 @@ export default function CompleteDS160Form() {
     NotificationModal 
   } = useNotificationModal()
   
-  const { register, handleSubmit, watch, formState: { errors, isValid } } = useForm<CompleteDS160FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm<CompleteDS160FormData>({
     defaultValues: {
       // SECCIÓN 1
       nombreCompleto: formData.nombreCompleto || '',
@@ -277,6 +279,7 @@ export default function CompleteDS160Form() {
     mode: 'onChange'
   })
 
+  const watchNombreCompleto = watch('nombreCompleto')
   const watchOtraNacionalidad = watch('otraNacionalidad')
   const watchHaUtilizadoOtrosNumeros = watch('haUtilizadoOtrosNumeros')
   const watchPlataformasAdicionales = watch('plataformasAdicionales')
@@ -400,10 +403,171 @@ Por favor, contacte al soporte técnico si el problema persiste.`
     router.push('/admin/dashboard')
   }
 
+  // Función para autocompletar todos los campos del formulario
+  const handleAutoComplete = () => {
+    const clientName = clientInfo?.clientName || 'EJEMPLO, USUARIO DEMO'
+    
+    const autoCompleteData: Partial<CompleteDS160FormData> = {
+      // SECCIÓN 1: Información Personal y Consulado
+      nombreCompleto: clientName,
+      fechaNacimiento: '1985-05-15',
+      ciudadEstadoPaisNacimiento: 'CIUDAD DE MÉXICO, DISTRITO FEDERAL, MÉXICO',
+      otraNacionalidad: 'NO',
+      especificarNacionalidad: '',
+      consuladoDeseado: 'EMBAJADA_CDMX',
+      oficinaCAS: 'CAS_MEX',
+      
+      // SECCIÓN 2: Información del Pasaporte y Contacto
+      numeroPasaporte: 'G12345678',
+      fechaExpedicion: '2020-01-15',
+      fechaVencimiento: '2030-01-14',
+      ciudadExpedicion: 'Ciudad de México',
+      domicilioCasa: 'Av. Reforma 123, Col. Centro, Ciudad de México, CDMX 06000',
+      telefonoCasa: '55-1234-5678',
+      celular: '55-9876-5432',
+      correoElectronico: 'ejemplo@correo.com',
+      haUtilizadoOtrosNumeros: 'NO',
+      listaOtrosNumeros: '',
+      correosAdicionales: '',
+      redesSociales: 'Facebook, Instagram',
+      plataformasAdicionales: 'NO',
+      listaPlataformasAdicionales: '',
+      idiomas: 'Español, Inglés',
+      estadoCivil: 'SOLTERO',
+      
+      // SECCIÓN 3: Información Laboral
+      fechaInicioTrabajo: '2022-01',
+      fechaFinTrabajo: '2024-12-31',
+      nombreEmpresa: 'Tecnología Avanzada SA de CV',
+      nombrePatron: 'García Pérez, Juan Carlos',
+      domicilioEmpresa: 'Av. Tecnológico 456, Col. Innovación, Ciudad de México',
+      telefonoEmpresa: '55-2468-1357',
+      puestoDesempenado: 'Ingeniero de Software Senior',
+      salarioMensualAproximado: '$25,000.00 MXN',
+      
+      // SECCIÓN 4: Información de Viaje
+      fechaLlegadaUSA: '2024-06-15',
+      duracionEstanciaUSA: '10 días',
+      hotelDomicilio: 'Hotel Times Square, 123 Broadway, New York, NY 10001',
+      telefonoHotel: '+1-212-555-0123',
+      viajaConFamiliar: 'NO',
+      nombreFamiliar: '',
+      parentescoFamiliar: '',
+      estatusFamiliar: '',
+      domicilioFamiliar: '',
+      telefonoFamiliar: '',
+      
+      // SECCIÓN 5: Información Educativa
+      fechaInicioEstudios: '2025-10-01',
+      fechaTerminoEstudios: '2025-11-07',
+      nombreEscuela: 'UNIVERSIDAD DE LA VIDA',
+      gradoCarreraEstudiada: 'LIC. EN AMOR',
+      domicilioEscuela: 'CALLE DE LA MENTIRA',
+      telefonoEscuela: '3456677',
+      ciudadEscuela: 'MONTERREY',
+      
+      // SECCIÓN 6: Visas Anteriores y Viajes
+      ciudadExpedicionVisaAnterior: 'CIUDAD DE MEXICO',
+      fechaExpedicionVisaAnterior: '2025-10-08',
+      fechaVencimientoVisaAnterior: '2025-10-31',
+      fechaEntrada1USA: '2025-09-29',
+      duracionEstancia1: '3 DIAS',
+      fechaEntrada2USA: '2025-10-20',
+      duracionEstancia2: '2 DIAS',
+      fechaEntrada3USA: '2025-10-27',
+      duracionEstancia3: '3 DIAS',
+      paisesVisitados5Anos: 'COLOMBIA',
+      parientesInmediatosUSA: 'NINGUNO',
+      
+      // SECCIÓN 7: Información Familiar
+      apellidoNombrePadre: 'JOSE CUCHO',
+      fechaNacimientoPadre: '2025-10-02',
+      apellidoNombreMadre: 'PATRICIA DEL HOYO',
+      fechaNacimientoMadre: '2025-10-11',
+      nombreConyugeActual: 'ANGELICA MARIA',
+      fechaNacimientoConyugeActual: '2025-10-09',
+      ciudadNacimientoConyugeActual: '',
+      fechaMatrimonio: '2025-10-03',
+      domicilioConyugeActual: 'EDRR',
+      esViudoDivorciado: 'NO',
+      numeroMatrimoniosAnteriores: '',
+      nombreConyugeAnterior: '',
+      domicilioConyugeAnterior: '',
+      fechaNacimientoConyugeAnterior: '',
+      fechaMatrimonioAnterior: '',
+      fechaDivorcio: '',
+      terminosDivorcio: '',
+      
+      // SECCIÓN 8: Preguntas de Seguridad (Todas en NO para evitar problemas)
+      haVisitadoUSA: 'NO',
+      fechasVisitasAnteriores: '',
+      visasAnteriores: '',
+      arrestosCrimenes: 'NO',
+      detallesArrestos: '',
+      haExtraviadoVisa: 'NO',
+      leHanNegadoVisa: 'NO',
+      haExtraviadoPasaporte: 'NO',
+      enfermedadesContagiosas: 'NO',
+      detallesEnfermedadesContagiosas: '',
+      trastornoMentalFisico: 'NO',
+      detallesTrastornoMentalFisico: '',
+      abusoAdiccionDrogas: 'NO',
+      detallesAbusoAdiccionDrogas: '',
+      historialCriminal: 'NO',
+      detallesHistorialCriminal: '',
+      sustanciasControladas: 'NO',
+      detallesSustanciasControladas: '',
+      prostitucionTrafico: 'NO',
+      detallesProstitucionTrafico: '',
+      inmigracionIrregular: 'NO',
+      detallesInmigracionIrregular: ''
+    }
+
+    // Aplicar los valores usando setValue de react-hook-form
+    Object.entries(autoCompleteData).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        setValue(key as keyof CompleteDS160FormData, value)
+      }
+    })
+
+    showSuccess(
+      '🚀 Formulario Autocompletado',
+      'Todos los campos han sido llenados con datos de ejemplo. Puede modificar cualquier información según sea necesario.'
+    )
+  }
+
+  // Obtener información del cliente desde el admin store
+  const clientInfo = token ? getClientByToken(token) : null
+  
   // Verificar si es acceso de cliente (con token) o admin (sin token)
   useEffect(() => {
     setIsClientAccess(!!token)
   }, [token])
+
+  // Efecto para detectar si el formulario ya está completado al cargar
+  useEffect(() => {
+    if (isLoaded && token) {
+      // Verificar el estado del formulario en la API
+      fetch(`/api/ds160?token=${token}`)
+        .then(response => response.json())
+        .then(result => {
+          if (result.success && result.data) {
+            const status = result.data.status
+            const completedAt = result.data.completed_at
+            
+            // Si el formulario está completado, preservar ese estado
+            if (status === 'completed' && completedAt) {
+              setIsFormSubmitted(true)
+              setSubmittedData(formData as unknown as CompleteDS160FormData)
+              console.log('✅ Formulario previamente completado detectado')
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error verificando estado del formulario:', error)
+        })
+    }
+  }, [isLoaded, token, formData])
 
   // Mostrar loading mientras se cargan los datos
   if (formLoading) {
@@ -427,27 +591,48 @@ Por favor, contacte al soporte técnico si el problema persiste.`
       <div className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div>
-                  <h1 className="text-2xl font-bold text-primary-900">
-                    {isClientAccess ? 'Formulario DS-160 - Visa Americana' : 'A8Visas - Formulario DS-160 Completo'}
-                  </h1>
-                  <p className="text-sm text-gray-600">
-                    {isClientAccess 
-                      ? 'Complete todos los campos del formulario para su trámite de visa'
-                      : 'Complete todo el formulario scrolleando hacia abajo'
-                    }
+            <div className="flex items-center justify-between w-full">
+              <div className="flex-shrink-0">
+                <h1 className="text-2xl font-bold text-primary-900">
+                  {isClientAccess ? 'Formulario DS-160 - Visa Americana' : 'A8Visas - Formulario DS-160 Completo'}
+                </h1>
+                <p className="text-sm text-gray-600">
+                  {isClientAccess 
+                    ? 'Complete todos los campos del formulario para su trámite de visa'
+                    : 'Complete todo el formulario scrolleando hacia abajo'
+                  }
+                </p>
+                {isLoaded && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✅ Datos anteriores cargados correctamente
                   </p>
-                  {isLoaded && (
-                    <p className="text-xs text-green-600 mt-1">
-                      ✅ Datos anteriores cargados correctamente
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
-              
-              <div className="flex items-center space-x-4">
+
+              {/* Mensaje personalizado con nombre del cliente */}
+              {clientInfo && clientInfo.clientName && clientInfo.clientName.trim() && (
+                <div className="flex-1 mx-8 text-center">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-4 py-3">
+                    <p className="text-lg font-semibold text-blue-800">
+                      ¡Hola {clientInfo.clientName}! 👋
+                    </p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Gracias por confiar en A8Visas • Estamos para servirte
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-4 flex-shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAutoComplete}
+                  className="flex items-center bg-gradient-to-r from-purple-50 to-purple-100 border-purple-300 text-purple-700 hover:from-purple-100 hover:to-purple-200 px-8 py-3"
+                  title="Completa automáticamente todos los campos con datos de ejemplo"
+                >
+                  🚀 Autocompletar
+                </Button>
                 <Button
                   type="button"
                   variant="outline"

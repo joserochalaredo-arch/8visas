@@ -13,7 +13,7 @@ interface Step6FormData {
 
 export default function Step6() {
   const router = useRouter()
-  const { setCurrentStep } = useDS160Store()
+  const { setCurrentStep, formData } = useDS160Store()
   const { saveDraft } = useStepNavigation()
   
   const { handleSubmit, getValues, formState: { isValid } } = useForm<Step6FormData>({
@@ -47,6 +47,7 @@ export default function Step6() {
       onNext={() => handleSubmit(onSubmit)()}
       onSave={onSave}
       isValid={true}
+      clientFullName={formData.nombreCompleto}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         
